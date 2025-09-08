@@ -6,7 +6,7 @@ export function bindCheckout(context){
   const btn = document.getElementById('btnCheckout');
   if(!btn) return;
   btn.addEventListener('click', ()=>{
-    const team = document.getElementById('outTeam').value;  // aqui 'team' = funcionário
+    const team = document.getElementById('outTeam').value;  // 'team' = funcionário
     const job  = document.getElementById('outJobsite').value;
     const driver = document.getElementById('outDriver').value;
     const vehicle= document.getElementById('outVehicle').value;
