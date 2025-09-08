@@ -1,7 +1,7 @@
 import { setupTabs } from './tabs.js';
 import { LS, write } from './storage.js';
 import { tools, teams, jobs, outs, rets, user, setState } from './state.js';
-import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker } from './ui.js';
+import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
 import { bindCheckout } from './checkout.js';
 import { bindReturn } from './returns.js';
 import { renderReturnList } from './render_return.js';
@@ -18,7 +18,6 @@ async function registerSW(){
 say('iniciando…');
 registerSW();
 
-// Auth
 bindAuth();
 const u = currentUser();
 if(u){ setState({user:u}); showApp(u); } else { showLogin(); }
@@ -28,31 +27,38 @@ const initAppUI = ()=>{
   if(initialized) return; initialized = true;
 
   setupTabs();
-
-  // base fills
-  fillSelect(document.getElementById('outTeam'), teams);
+  // Obras/Clientes ainda é select simples
   fillSelect(document.getElementById('outJobsite'), jobs);
 
-  // default times
   const outTime=document.getElementById('outTime'); if(outTime) outTime.value=new Date().toISOString().slice(0,16);
   const outNow=document.getElementById('outNow'); if(outNow) outNow.textContent='Agora: '+ new Date().toLocaleString('pt-BR');
   const retTime=document.getElementById('retTime'); if(retTime) retTime.value=new Date().toISOString().slice(0,16);
 
-  // contexto
-  const ctx = { outPhotos:[], retPhotos:[], pickState:{}, currentReturn:null, renderPicker:()=>renderPicker(ctx.pickState), refreshOpenOuts, renderReturnList:()=>renderReturnList(ctx) };
+  // Contexto
+  const ctx = {
+    outPhotos:[], retPhotos:[],
+    pickState:{}, currentReturn:null,
+    employeesSelected: new Set(), // <<< funcionários marcados
+    renderPicker:()=>renderPicker(ctx.pickState),
+    refreshOpenOuts,
+    renderReturnList:()=>renderReturnList(ctx)
+  };
 
-  // fotos
+  // Renderiza checkboxes de funcionários
+  renderEmployeesChoice(ctx);
+
+  // Fotos
   const outPhotoEl=document.getElementById('outPhoto'); if(outPhotoEl){ outPhotoEl.addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; const b64=await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); }); ctx.outPhotos.push(b64); const pc=document.getElementById('outPhotoCount'); if(pc) pc.textContent=`${ctx.outPhotos.length} foto(s)`; }); }
   const retPhotoEl=document.getElementById('retPhoto'); if(retPhotoEl){ retPhotoEl.addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; const b64=await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); }); ctx.retPhotos.push(b64); const pc=document.getElementById('retPhotoCount'); if(pc) pc.textContent=`${ctx.retPhotos.length} foto(s)`; }); }
 
-  // renders
+  // Listas
   renderTools(()=>ctx.renderPicker());
   renderTeams(refreshAll);
   renderJobs(refreshAll);
   ctx.renderPicker();
   refreshOpenOuts();
 
-  // binds de cadastro (Adicionar)
+  // Adicionar itens
   const btnToolAdd = document.getElementById('toolAdd');
   if(btnToolAdd){
     btnToolAdd.addEventListener('click', ()=>{
@@ -70,7 +76,8 @@ const initAppUI = ()=>{
       if(!val) return;
       teams.push(val); write(LS.teams, teams);
       document.getElementById('teamNew').value='';
-      renderTeams(refreshAll); fillSelect(document.getElementById('outTeam'), teams);
+      renderTeams(refreshAll);
+      renderEmployeesChoice(ctx); // <<< atualizar checkboxes
     });
   }
   const btnJobAdd = document.getElementById('jobAdd');
@@ -84,24 +91,21 @@ const initAppUI = ()=>{
     });
   }
 
-  // exports & ações
   bindExports();
   bindCheckout(ctx);
   bindReturn(ctx);
 
   function refreshAll(){
-    fillSelect(document.getElementById('outTeam'), teams);
     fillSelect(document.getElementById('outJobsite'), jobs);
     renderTools(()=>ctx.renderPicker());
     renderTeams(refreshAll);
     renderJobs(refreshAll);
+    renderEmployeesChoice(ctx); // <<< re-render funcionários
     ctx.renderPicker();
   }
 };
 
-// init imediato se já tem user
 if(u){ initAppUI(); }
-// ouvir login
 document.addEventListener('user:login', ()=>{ initAppUI(); });
 
 say('pronto');
