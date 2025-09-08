@@ -1,8 +1,11 @@
-
 import { outs } from './state.js';
+
 export function refreshOpenOuts(){
-  const sel=document.getElementById('retOpen'); if(!sel) return;
-  const fmtBR = (d)=> new Date(d).toLocaleString('pt-BR');
-  const open=outs.filter(o=>!o.returnedAt);
-  sel.innerHTML = open.length? '<option value="">Selecione...</option>'+open.map(o=>`<option value="${o.id}">${o.team} • ${o.job} • ${fmtBR(o.timeOut)}</option>`).join('') : '<option>Não há saídas em aberto</option>';
+  const sel = document.getElementById('retOpen'); if(!sel) return;
+  const open = outs.filter(o=> !o.returnedAt);
+  sel.innerHTML = '<option value="">Selecione...</option>' + open.map(o=>{
+    const nomes = (o.employees && o.employees.length) ? o.employees.join(', ') : (o.team || '-');
+    const ts = (o.timeOut||'').slice(0,16).replace('T',' ');
+    return `<option value="${o.id}">${ts} - ${nomes} - ${o.job}</option>`;
+  }).join('');
 }
