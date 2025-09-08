@@ -40,7 +40,7 @@
       <div class="header">
         <div>
           <div class="h1">Controle de Equipes & Ferramentas</div>
-          <div class="badge">PWA • GitHub Pages • Exporta CSV • Login</div>
+          <div class="badge">PWA • GitHub Pages • Exporta CSV/XML • Login</div>
         </div>
         <div class="headerUser">
           <div class="avatar" id="avatar">U</div>
@@ -48,8 +48,9 @@
             <div id="userName" class="small">Usuário</div>
             <div class="small"><span id="userRole">Operação</span> — <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a></div>
           </div>
-          <div>
-            <button id="btnExportAll" class="btn">Exportar CSV (Tudo)</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button id="btnExportAll" class="btn">CSV (Tudo)</button>
+            <button id="btnExportXML" class="btn">XML (Tudo)</button>
           </div>
         </div>
       </div>
@@ -93,14 +94,6 @@
         <div style="margin-top:10px">
           <label>Observações</label>
           <textarea id="outObs" placeholder="Condições, ferramentas especiais, etc."></textarea>
-        </div>
-
-        <div style="margin-top:10px">
-          <label>Assinatura do Responsável (Saída) — opcional agora</label>
-          <div style="display:flex;gap:10px;align-items:center">
-            <canvas id="outSign" class="signature" height="140"></canvas>
-            <button class="btn" data-clear="outSign">Limpar</button>
-          </div>
         </div>
 
         <div class="card" style="margin-top:10px">
@@ -153,14 +146,6 @@
         <div style="margin-top:10px">
           <label>Observações gerais</label>
           <textarea id="retNotes"></textarea>
-        </div>
-
-        <div style="margin-top:10px">
-          <label>Assinatura do Responsável (Retorno) — opcional agora</label>
-          <div style="display:flex;gap:10px;align-items:center">
-            <canvas id="retSign" class="signature" height="140"></canvas>
-            <button class="btn" data-clear="retSign">Limpar</button>
-          </div>
         </div>
 
         <div style="margin-top:10px">
