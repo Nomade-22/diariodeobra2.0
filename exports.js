@@ -9,8 +9,9 @@ export function buildXML(outs, rets){
   x.push('<?xml version="1.0" encoding="UTF-8"?>');
   x.push('<diarios>');
   outs.forEach(o=>{
+    const nomes = (o.employees && o.employees.length) ? o.employees.join('; ') : (o.team || '');
     x.push(`  <saida id="${xmlEscape(o.id)}">`);
-    x.push(`    <funcionario>${xmlEscape(o.team)}</funcionario>`);
+    x.push(`    <funcionarios>${xmlEscape(nomes)}</funcionarios>`);
     x.push(`    <motorista>${xmlEscape(o.driver)}</motorista>`);
     x.push(`    <obra>${xmlEscape(o.job)}</obra>`);
     x.push(`    <veiculo>${xmlEscape(o.vehicle)}</veiculo>`);
@@ -70,11 +71,12 @@ function sheetXML(name, rows){
 }
 export function buildXLS(outs, rets){
   const saidas = [];
-  saidas.push(rowXML(['tipo','id','funcionario','motorista','obra','veiculo','km_saida','horario_saida','obs_saida','criado_por','ferramentas'], true));
+  saidas.push(rowXML(['tipo','id','funcionarios','motorista','obra','veiculo','km_saida','horario_saida','obs_saida','criado_por','ferramentas'], true));
   outs.forEach(c=>{
+    const nomes = (c.employees && c.employees.length) ? c.employees.join('; ') : (c.team || '');
     const ferr = (c.tools||[]).map(t=>`${t.name}(${t.code||'-'})x${t.qty}`).join('; ');
     const autor = c.createdBy ? `${c.createdBy.name} (${c.createdBy.id||c.createdBy.role||''})` : '';
-    saidas.push(rowXML(['saida', c.id, c.team, c.driver, c.job, c.vehicle, c.kmStart, c.timeOut, c.obs, autor, ferr]));
+    saidas.push(rowXML(['saida', c.id, nomes, c.driver, c.job, c.vehicle, c.kmStart, c.timeOut, c.obs, autor, ferr]));
   });
 
   const retornos = [];
