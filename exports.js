@@ -2,7 +2,7 @@ export const esc = (v)=>{ if(v==null) return ''; const s=String(v).replaceAll('"
 export const toCSV = (rows)=> rows.length? [Object.keys(rows[0]).map(esc).join(',')].concat(rows.map(r=>Object.keys(rows[0]).map(h=>esc(r[h])).join(','))).join('\n'):'';
 export const downloadCSV=(name,rows)=>{ const csv=toCSV(rows); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name+'_'+new Date().toISOString().slice(0,19).replaceAll(':','-')+'.csv'; a.click(); };
 
-// -------- XML (mantive se precisar) --------
+// -------- XML --------
 function xmlEscape(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\'/g,'&apos;'); }
 export function buildXML(outs, rets){
   const x = [];
@@ -10,7 +10,7 @@ export function buildXML(outs, rets){
   x.push('<diarios>');
   outs.forEach(o=>{
     x.push(`  <saida id="${xmlEscape(o.id)}">`);
-    x.push(`    <equipe>${xmlEscape(o.team)}</equipe>`);
+    x.push(`    <funcionario>${xmlEscape(o.team)}</funcionario>`);
     x.push(`    <motorista>${xmlEscape(o.driver)}</motorista>`);
     x.push(`    <obra>${xmlEscape(o.job)}</obra>`);
     x.push(`    <veiculo>${xmlEscape(o.vehicle)}</veiculo>`);
@@ -69,9 +69,8 @@ function sheetXML(name, rows){
   return `<Worksheet ss:Name="${xlsEsc(name)}"><Table>${rows.join('')}</Table></Worksheet>`;
 }
 export function buildXLS(outs, rets){
-  // monta linhas
   const saidas = [];
-  saidas.push(rowXML(['tipo','id','equipe','motorista','obra','veiculo','km_saida','horario_saida','obs_saida','criado_por','ferramentas'], true));
+  saidas.push(rowXML(['tipo','id','funcionario','motorista','obra','veiculo','km_saida','horario_saida','obs_saida','criado_por','ferramentas'], true));
   outs.forEach(c=>{
     const ferr = (c.tools||[]).map(t=>`${t.name}(${t.code||'-'})x${t.qty}`).join('; ');
     const autor = c.createdBy ? `${c.createdBy.name} (${c.createdBy.id||c.createdBy.role||''})` : '';
