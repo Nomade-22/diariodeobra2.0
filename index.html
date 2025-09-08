@@ -66,10 +66,10 @@
         <h2>Registrar Saída</h2>
         <div class="row" style="grid-template-columns:repeat(2,1fr);gap:10px">
           <div>
-            <label>Funcionários (selecione vários)</label>
-            <!-- Mantido id outTeam para compatibilidade, agora com multiple -->
-            <select id="outTeam" multiple size="6"></select>
-            <div class="small">Segure Ctrl (ou ⌘ no Mac) para marcar mais de um.</div>
+            <label>Funcionários (marque os participantes)</label>
+            <!-- NOVO: checkboxes renderizados via JS -->
+            <div id="outEmployees" class="list" style="max-height:160px; padding:8px; border:1px solid var(--border); border-radius:10px; background:#0a1430"></div>
+            <div class="small">Cadastre nomes na aba <b>Cadastros → Funcionários</b>.</div>
           </div>
           <div>
             <label>Motorista</label>
