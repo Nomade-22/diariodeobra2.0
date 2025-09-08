@@ -6,9 +6,8 @@ export function bindCheckout(context){
   const btn = document.getElementById('btnCheckout');
   if(!btn) return;
   btn.addEventListener('click', ()=>{
-    // coleta múltiplos funcionários do select
-    const sel = document.getElementById('outTeam');
-    const employees = Array.from(sel?.options || []).filter(o=>o.selected).map(o=>o.value);
+    // funcionários marcados nas checkboxes
+    const employees = Array.from(context.employeesSelected);
     const job  = document.getElementById('outJobsite').value;
     const driver = document.getElementById('outDriver').value;
     const vehicle= document.getElementById('outVehicle').value;
@@ -19,21 +18,22 @@ export function bindCheckout(context){
     if(!employees.length || !job){ alert('Informe ao menos um Funcionário e a Obra/Cliente'); return; }
     if(!user){ alert('Você precisa estar logado.'); return; }
 
-    const selected = Object.entries(context.pickState).filter(([,v])=>v.checked).map(([tid,v])=>{
-      const t=tools.find(x=>x.id===tid);
-      return { id:uid(), toolId:tid, name:t?.name||'', code:t?.code||'', qty: v.take, obs:t?.obs||'' }
-    });
+    const selected = Object.entries(context.pickState)
+      .filter(([,v])=>v.checked)
+      .map(([tid,v])=>{
+        const t=tools.find(x=>x.id===tid);
+        return { id:uid(), toolId:tid, name:t?.name||'', code:t?.code||'', qty: v.take, obs:t?.obs||'' }
+      });
     if(selected.length===0){
       if(!confirm('Nenhuma ferramenta selecionada. Confirmar saída mesmo assim?')) return;
     }
 
     const rec = {
       id:uid(),
-      // novo: array de funcionários
-      employees,
-      // retrocompatibilidade: mantém "team" com a primeira posição
-      team: employees[0] || '',
-      driver, job, vehicle, kmStart:km, timeOut, obs,
+      employees,                // lista de funcionários
+      team: employees[0] || '', // retrocompatibilidade com campos antigos
+      driver, job, vehicle,
+      kmStart:km, timeOut, obs,
       photos: context.outPhotos.slice(),
       tools: selected,
       createdAt: new Date().toISOString(),
@@ -55,6 +55,12 @@ export function bindCheckout(context){
     document.getElementById('outKm').value='';
     document.getElementById('outObs').value='';
     document.getElementById('outTime').value=new Date().toISOString().slice(0,16);
+
+    // limpa seleção para próxima saída
+    context.employeesSelected.clear();
+    const host = document.getElementById('outEmployees');
+    host?.querySelectorAll('input[type="checkbox"]').forEach(cb=> cb.checked=false);
+
     context.pickState = {}; updateSelCount(context.pickState);
     context.refreshOpenOuts(); context.renderPicker();
   });
