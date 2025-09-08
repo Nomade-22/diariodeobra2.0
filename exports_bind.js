@@ -1,5 +1,4 @@
-
-import { downloadCSV } from './exports.js';
+import { downloadCSV, downloadXML } from './exports.js';
 import { outs, rets } from './state.js';
 
 function rowsOut(){ return outs.map(c=>({ tipo:'saida', id:c.id, equipe:c.team, motorista:c.driver, obra:c.job, veiculo:c.vehicle, km_saida:c.kmStart, horario_saida:c.timeOut, obs_saida:c.obs, ferramentas:c.tools.map(t=>`${t.name}(${t.code||'-'})x${t.qty}`).join('; '), criado_por:c.createdBy? (c.createdBy.name + ' ('+(c.createdBy.id||c.createdBy.role||'')+')') : '' })) }
@@ -7,6 +6,7 @@ function rowsRet(){ return rets.flatMap(r=>{ const head=[{ tipo:'retorno', id:r.
 
 export function bindExports(){
   const a=document.getElementById('btnExportAll'); if(a){ a.addEventListener('click', ()=> downloadCSV('multprest_tudo', rowsOut().concat(rowsRet())) ); }
+  const x=document.getElementById('btnExportXML'); if(x){ x.addEventListener('click', ()=> downloadXML('multprest_tudo', outs, rets) ); }
   const o=document.getElementById('btnExportOut'); if(o){ o.addEventListener('click', ()=> downloadCSV('multprest_saidas', rowsOut()) ); }
   const r=document.getElementById('btnExportRet'); if(r){ r.addEventListener('click', ()=> downloadCSV('multprest_retorno', rowsRet()) ); }
   const r2=document.getElementById('btnExportReturn'); if(r2){ r2.addEventListener('click', ()=> downloadCSV('multprest_retorno', rowsRet()) ); }
