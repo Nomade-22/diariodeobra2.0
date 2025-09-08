@@ -1,52 +1,103 @@
-
-import { LS, write, uid } from './storage.js';
 import { tools, teams, jobs } from './state.js';
+import { write, LS, uid } from './storage.js';
 
-export function fillSelect(sel, arr){ if(!sel) return; sel.innerHTML='<option value="">Selecione...</option>'+arr.map(v=>`<option>${v}</option>`).join(''); }
+export function fillSelect(sel, arr){
+  if(!sel) return;
+  sel.innerHTML = arr.map(v=>`<option value="${v}">${v}</option>`).join('');
+}
 
-export function renderTools(onChange){
-  const host=document.getElementById('toolsList'); if(!host) return; host.innerHTML='';
-  tools.forEach((t,idx)=>{ if(!t.id) t.id=uid(); const row=document.createElement('div'); row.className='gridrow'; row.style.gridTemplateColumns='1fr 160px 100px 1fr'; row.innerHTML=`
-    <input value="${t.name||''}" placeholder="Ferramenta" />
-    <input value="${t.code||''}" placeholder="Código/ID" />
-    <input type="number" min="1" value="${t.qty||1}" placeholder="Qtd" />
-    <input value="${t.obs||''}" placeholder="Obs" />`;
-    const [iName,iCode,iQty,iObs]=row.querySelectorAll('input');
-    iName.addEventListener('input',()=>{ tools[idx].name=iName.value; write(LS.tools,tools); onChange?.(); });
-    iCode.addEventListener('input',()=>{ tools[idx].code=iCode.value; write(LS.tools,tools); onChange?.(); });
-    iQty.addEventListener('input', ()=>{ tools[idx].qty = parseInt(iQty.value||'1'); write(LS.tools,tools); onChange?.(); });
-    iObs.addEventListener('input', ()=>{ tools[idx].obs = iObs.value; write(LS.tools,tools); });
-    host.appendChild(row);
+export function renderTeams(refresh){
+  const ul = document.getElementById('teamsList'); if(!ul) return;
+  ul.innerHTML = teams.map((t,i)=>`<li style="display:flex;gap:6px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+    <span>${t}</span>
+    <span>
+      <button class="btn" data-edit-team="${i}">Editar</button>
+      <button class="btn danger" data-del-team="${i}">Excluir</button>
+    </span>
+  </li>`).join('');
+  ul.querySelectorAll('[data-del-team]').forEach(b=> b.addEventListener('click', ()=>{ const i=+b.dataset.delTeam; teams.splice(i,1); write(LS.teams, teams); refresh(); }));
+  ul.querySelectorAll('[data-edit-team]').forEach(b=> b.addEventListener('click', ()=>{ const i=+b.dataset.editTeam; const nv=prompt('Novo nome:', teams[i]); if(nv){ teams[i]=nv; write(LS.teams, teams); refresh(); } }));
+  const count = document.getElementById('toolsCount'); if(count) count.textContent = tools.length + ' itens';
+}
+
+export function renderJobs(refresh){
+  const ul = document.getElementById('jobsList'); if(!ul) return;
+  ul.innerHTML = jobs.map((t,i)=>`<li style="display:flex;gap:6px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+    <span>${t}</span>
+    <span>
+      <button class="btn" data-edit-job="${i}">Editar</button>
+      <button class="btn danger" data-del-job="${i}">Excluir</button>
+    </span>
+  </li>`).join('');
+  ul.querySelectorAll('[data-del-job]').forEach(b=> b.addEventListener('click', ()=>{ const i=+b.dataset.delJob; jobs.splice(i,1); write(LS.jobs, jobs); refresh(); }));
+  ul.querySelectorAll('[data-edit-job]').forEach(b=> b.addEventListener('click', ()=>{ const i=+b.dataset.editJob; const nv=prompt('Novo nome:', jobs[i]); if(nv){ jobs[i]=nv; write(LS.jobs, jobs); refresh(); } }));
+}
+
+export function renderTools(afterRender){
+  const list = document.getElementById('toolsList'); if(!list) return;
+  list.innerHTML = tools.map((t,i)=>{
+    if(!t.id) t.id = uid();
+    return `<div class="gridrow">
+      <div><button class="btn danger" data-del-tool="${i}">✕</button></div>
+      <div><input data-name="${i}" value="${t.name||''}" placeholder="Ex.: Furadeira"/></div>
+      <div><input data-code="${i}" value="${t.code||''}" placeholder="Código"/></div>
+      <div><input data-qty="${i}" type="number" value="${t.qty||1}" /></div>
+      <div><input data-obs="${i}" value="${t.obs||''}" placeholder="Obs"/></div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-name]').forEach(inp=> inp.addEventListener('input',()=>{ const i=+inp.dataset.name; tools[i].name=inp.value; write(LS.tools, tools); afterRender&&afterRender(); }));
+  list.querySelectorAll('[data-code]').forEach(inp=> inp.addEventListener('input',()=>{ const i=+inp.dataset.code; tools[i].code=inp.value; write(LS.tools, tools); afterRender&&afterRender(); }));
+  list.querySelectorAll('[data-qty]').forEach(inp=> inp.addEventListener('input',()=>{ const i=+inp.dataset.qty; tools[i].qty=+inp.value||0; write(LS.tools, tools); afterRender&&afterRender(); }));
+  list.querySelectorAll('[data-obs]').forEach(inp=> inp.addEventListener('input',()=>{ const i=+inp.dataset.obs; tools[i].obs=inp.value; write(LS.tools, tools); afterRender&&afterRender(); }));
+  list.querySelectorAll('[data-del-tool]').forEach(btn=> btn.addEventListener('click',()=>{ const i=+btn.dataset.delTool; tools.splice(i,1); write(LS.tools, tools); renderTools(afterRender); afterRender&&afterRender(); }));
+}
+
+export function updateSelCount(pickState){
+  const selCount = Object.values(pickState).filter(x=>x.checked).length;
+  const el = document.getElementById('selCount'); if(el) el.textContent = selCount + ' selecionadas';
+}
+
+export function renderPicker(pickState){
+  const el = document.getElementById('pickList'); if(!el) return;
+  el.innerHTML = tools.map(t=>{
+    if(!t.id) t.id = uid();
+    const st = pickState[t.id] || {checked:false, take: 0};
+    return `<div class="gridrow">
+      <div><input type="checkbox" data-pick="${t.id}" ${st.checked?'checked':''}></div>
+      <div>${t.name||'-'}</div>
+      <div>${t.code||'-'}</div>
+      <div>${t.qty??0}</div>
+      <div><input type="number" min="0" data-take="${t.id}" value="${st.take||0}"></div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-pick]').forEach(ch=> ch.addEventListener('change',()=>{
+    const id = ch.dataset.pick;
+    pickState[id] = pickState[id] || {checked:false, take:0};
+    pickState[id].checked = ch.checked;
+    updateSelCount(pickState);
+  }));
+  el.querySelectorAll('[data-take]').forEach(inp=> inp.addEventListener('input',()=>{
+    const id = inp.dataset.take;
+    pickState[id] = pickState[id] || {checked:false, take:0};
+    pickState[id].take = +inp.value||0;
+  }));
+  updateSelCount(pickState);
+}
+
+/* NOVO: checkboxes de funcionários para a Saída */
+export function renderEmployeesChoice(ctx){
+  const host = document.getElementById('outEmployees'); if(!host) return;
+  host.innerHTML = teams.map(name => `
+    <label style="display:flex;gap:8px;align-items:center;margin:4px 0">
+      <input type="checkbox" data-emp="${name}" ${ctx.employeesSelected.has(name)?'checked':''}/>
+      <span>${name}</span>
+    </label>
+  `).join('') || '<div class="small">Nenhum funcionário cadastrado ainda.</div>';
+  host.querySelectorAll('[data-emp]').forEach(ch=>{
+    ch.addEventListener('change', ()=>{
+      const n = ch.dataset.emp;
+      if(ch.checked) ctx.employeesSelected.add(n);
+      else ctx.employeesSelected.delete(n);
+    });
   });
-  const tcount=document.getElementById('toolsCount'); if(tcount) tcount.textContent=`${tools.length} itens`;
-}
-
-export function renderTeams(refreshAll){
-  const ul=document.getElementById('teamsList'); if(!ul) return; ul.innerHTML='';
-  teams.forEach((t,i)=>{ const li=document.createElement('li'); li.innerHTML=`<div class='gridrow' style='grid-template-columns:1fr 120px'><input value="${t}"><button class='btn'>Excluir</button></div>`; const inp=li.querySelector('input'); const btn=li.querySelector('button'); inp.addEventListener('input',()=>{ teams[i]=inp.value; write(LS.teams,teams); refreshAll?.(); }); btn.addEventListener('click',()=>{ teams.splice(i,1); write(LS.teams,teams); refreshAll?.(); }); ul.appendChild(li); });
-}
-
-export function renderJobs(refreshAll){
-  const ul=document.getElementById('jobsList'); if(!ul) return; ul.innerHTML='';
-  jobs.forEach((j,i)=>{ const li=document.createElement('li'); li.innerHTML=`<div class='gridrow' style='grid-template-columns:1fr 120px'><input value="${j}"><button class='btn'>Excluir</button></div>`; const inp=li.querySelector('input'); const btn=li.querySelector('button'); inp.addEventListener('input',()=>{ jobs[i]=inp.value; write(LS.jobs,jobs); refreshAll?.(); }); btn.addEventListener('click',()=>{ jobs.splice(i,1); write(LS.jobs,jobs); refreshAll?.(); }); ul.appendChild(li); });
-}
-
-export function renderPicker(pickStateRef){
-  const pickHost=document.getElementById('pickList'); if(!pickHost) return; pickHost.innerHTML='';
-  tools.forEach(t=>{ if(!t.id) t.id=uid(); const st=pickStateRef[t.id]||{checked:false, take: Math.min(1, t.qty||1)}; pickStateRef[t.id]=st; const row=document.createElement('div'); row.className='gridrow'; row.innerHTML=`
-      <input type='checkbox' ${st.checked?'checked':''} />
-      <div>${t.name||''}</div>
-      <div class='small'>${t.code||''}</div>
-      <div>${t.qty||1}</div>
-      <input type='number' min='1' value='${st.take}' ${st.checked?'':'disabled'} />`;
-    const [chk, , , , qtyInput] = [row.children[0], row.children[1], row.children[2], row.children[3], row.children[4]];
-    chk.addEventListener('change',()=>{ st.checked=chk.checked; qtyInput.disabled=!st.checked; updateSelCount(pickStateRef); });
-    qtyInput.addEventListener('input',()=>{ st.take = Math.max(1, parseInt(qtyInput.value||'1')); });
-    pickHost.appendChild(row);
-  });
-  updateSelCount(pickStateRef);
-}
-
-export function updateSelCount(pickStateRef){
-  const c = Object.values(pickStateRef).filter(v=>v.checked).length; const el=document.getElementById('selCount'); if(el) el.textContent = c+' selecionadas';
 }
