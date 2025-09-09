@@ -42,8 +42,8 @@ export function showApp(user) {
 }
 
 export function bindAuth() {
-  const btnLogin = document.getElementById('btnLogin');
-  const btnLogout = document.getElementById('btnLogout');
+  const btnLogin   = document.getElementById('btnLogin');
+  const btnLogout  = document.getElementById('btnLogout');
   const passToggle = document.getElementById('passToggle');
 
   // 👁️ Mostrar/ocultar senha
@@ -59,27 +59,23 @@ export function bindAuth() {
   if (btnLogin) {
     btnLogin.addEventListener('click', () => {
       const nameTyped = document.getElementById('loginName').value.trim();
-      const pass = document.getElementById('loginPass').value.trim();
-      const roleChosen = document.getElementById('loginRole').value; // o que o usuário escolheu no select
+      const pass      = document.getElementById('loginPass').value.trim();
       if (!nameTyped) { alert('Informe seu nome.'); return; }
 
-      const key = firstName(nameTyped);       // usa SÓ o primeiro nome
+      const key     = firstName(nameTyped); // usa só o primeiro nome
       const account = USERS[key] || null;
 
       let finalRole = 'Operação';
 
       if (account) {
-        // Usuário autorizado (Admin/Supervisor) → senha OBRIGATÓRIA e precisa bater
+        // Usuário autorizado → senha OBRIGATÓRIA e precisa bater
         if (pass !== account.pass) {
           alert('Senha inválida.');
           return;
         }
-        finalRole = account.role; // força o cargo da lista branca
+        finalRole = account.role;
       } else {
-        // Não autorizado → SEMPRE Operação (independente do select)
-        if (roleChosen === 'Admin' || roleChosen === 'Supervisor') {
-          alert('Somente usuários autorizados podem entrar com esse cargo. Você entrará como Operação.');
-        }
+        // Não autorizado → SEMPRE Operação
         finalRole = 'Operação';
       }
 
