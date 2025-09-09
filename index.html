@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Controle de Equipes & Ferramentas</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="estilo.css">
+  <link rel="manifest" href="manifesto.json">
   <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
@@ -66,7 +66,6 @@
           <div>
             <label>Funcionários (marque os participantes)</label>
             <div id="outEmployees" class="empbox"></div>
-            <div class="small">Cadastre nomes na aba <b>Cadastros → Funcionários</b> (somente Admin).</div>
           </div>
           <div>
             <label>Motorista</label>
@@ -108,12 +107,6 @@
         </div>
 
         <div class="mt">
-          <label>Foto rápida (opcional)</label>
-          <input id="outPhoto" type="file" accept="image/*" capture="environment" />
-          <div class="small" id="outPhotoCount">Nenhuma foto</div>
-        </div>
-
-        <div class="mt">
           <button id="btnCheckout" class="btn success">Confirmar Saída</button>
         </div>
       </section>
@@ -149,18 +142,12 @@
           <textarea id="retNotes"></textarea>
         </div>
 
-        <div class="mt">
-          <label>Foto do retorno (opcional)</label>
-          <input id="retPhoto" type="file" accept="image/*" capture="environment" />
-          <div class="small" id="retPhotoCount">Nenhuma foto</div>
-        </div>
-
         <div class="right mt">
           <button id="btnFinishReturn" class="btn success">Confirmar Retorno</button>
         </div>
       </section>
 
-      <!-- CADASTROS (somente Admin) -->
+      <!-- CADASTROS -->
       <section id="tab-cadastros" class="hidden">
         <div class="row threecol">
           <div class="card">
@@ -169,7 +156,6 @@
               <span class="small" id="toolsCount">0 itens</span>
               <button id="toolAdd" class="btn">Adicionar</button>
             </div>
-            <!-- ⇓ header corrigido para 40px / 1fr / 160 / 110 / 1fr -->
             <div class="gridhead" id="toolsHeadCad">
               <div style="width:40px"></div><div>Ferramenta</div><div>Código</div><div>Qtd</div><div>Obs</div>
             </div>
@@ -193,21 +179,6 @@
             </div>
             <ul id="jobsList"></ul>
           </div>
-        </div>
-
-        <!-- Usuários -->
-        <div class="card mt">
-          <h3>Usuários (Login & Permissões)</h3>
-          <div class="inline mb8">
-            <input id="usrName" placeholder="Primeiro nome" style="max-width:220px" />
-            <select id="usrRole" style="max-width:180px">
-              <option>Operação</option><option>Supervisor</option><option>Admin</option>
-            </select>
-            <input id="usrPass" placeholder="Senha" style="max-width:220px" />
-            <button id="usrAdd" class="btn">Adicionar/Atualizar</button>
-          </div>
-          <div id="usrList"></div>
-          <div class="small">Obs.: <b>Jhonatan</b> não pode ser excluído e sempre será <b>Admin</b>.</div>
         </div>
       </section>
 
@@ -235,6 +206,10 @@
   </div>
 
   <div id="diag" class="chip">carregando…</div>
+
+  <!-- Scripts principais -->
   <script type="module" src="main.js"></script>
+  <!-- Script de integração Google -->
+  <script type="module" src="gas_bind.js"></script>
 </body>
 </html>
