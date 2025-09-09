@@ -1,5 +1,5 @@
 import { setupTabs } from './tabs.js';
-import { LS, write } from './storage.js';
+import { LS, write } from './state.js';
 import { tools, teams, jobs, outs, rets, user, setState } from './state.js';
 import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
 import { bindCheckout } from './checkout.js';
@@ -8,6 +8,7 @@ import { renderReturnList } from './render_return.js';
 import { refreshOpenOuts } from './openouts.js';
 import { bindExports } from './exports_bind.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
+import { renderFinance, bindFinanceTop } from './finance.js';
 
 const chip = document.getElementById('diag'); const say = t=> chip && (chip.textContent=t);
 
@@ -42,7 +43,6 @@ const initAppUI = ()=>{
     renderReturnList:()=>renderReturnList(ctx)
   };
 
-  // primeiras renderizações
   renderEmployeesChoice(ctx);
   renderTools(()=>ctx.renderPicker());
   renderTeams(refreshAll);
@@ -50,9 +50,8 @@ const initAppUI = ()=>{
   ctx.renderPicker();
   refreshOpenOuts();
 
-  // === Botões "Adicionar" (somente Admin) ===
+  // Adicionar (somente Admin)
   const isAdmin = () => user && user.role === 'Admin';
-
   const btnToolAdd = document.getElementById('toolAdd');
   if(btnToolAdd){
     btnToolAdd.addEventListener('click', ()=>{
@@ -86,6 +85,8 @@ const initAppUI = ()=>{
       document.getElementById('jobNew').value='';
       renderJobs(refreshAll);
       fillSelect(document.getElementById('outJobsite'), jobs);
+      // manter select do financeiro em sincronia
+      bindFinanceTop();
     });
   }
 
@@ -93,14 +94,20 @@ const initAppUI = ()=>{
   bindCheckout(ctx);
   bindReturn(ctx);
 
+  // Financeiro (se for Admin)
+  if(isAdmin()){
+    bindFinanceTop();   // preenche finJob e liga botões
+    renderFinance();    // desenha lista
+  }
+
   function refreshAll(){
-    // re-render tudo após adicionar/editar/excluir
     fillSelect(document.getElementById('outJobsite'), jobs);
     renderTools(()=>ctx.renderPicker());
     renderTeams(refreshAll);
     renderJobs(refreshAll);
     renderEmployeesChoice(ctx);
     ctx.renderPicker();
+    if(isAdmin()){ bindFinanceTop(); renderFinance(); }
   }
 };
 
