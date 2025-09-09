@@ -37,7 +37,7 @@
       <div class="header">
         <div>
           <div class="h1">Controle de Equipes & Ferramentas</div>
-          <div class="badge">PWA • GitHub Pages • Exporta PDF • Login</div>
+          <div class="badge">PWA • GitHub Pages • Exporta PDF/Excel • Login</div>
         </div>
         <div class="headerUser">
           <div class="avatar" id="avatar">U</div>
@@ -46,7 +46,8 @@
             <div class="small"><span id="userRole">Operação</span> — <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a></div>
           </div>
           <div class="toolsBar">
-            <button id="btnExportPDF" class="btn">Exportar PDF</button>
+            <button id="btnExportPDF" class="btn hidden">Relatório PDF</button>
+            <button id="btnExportXLS" class="btn hidden">Relatório Excel</button>
           </div>
         </div>
       </div>
@@ -173,6 +174,7 @@
             </div>
             <div id="toolsList" class="list"></div>
           </div>
+
           <div class="card">
             <h3>Funcionários</h3>
             <div class="inline mb8">
@@ -181,6 +183,7 @@
             </div>
             <ul id="teamsList"></ul>
           </div>
+
           <div class="card">
             <h3>Obras/Clientes</h3>
             <div class="inline mb8">
@@ -189,6 +192,21 @@
             </div>
             <ul id="jobsList"></ul>
           </div>
+        </div>
+
+        <!-- NOVO: Usuários / Credenciais -->
+        <div class="card mt">
+          <h3>Usuários (Login & Permissões)</h3>
+          <div class="inline mb8">
+            <input id="usrName" placeholder="Primeiro nome" style="max-width:220px" />
+            <select id="usrRole" style="max-width:180px">
+              <option>Operação</option><option>Supervisor</option><option>Admin</option>
+            </select>
+            <input id="usrPass" placeholder="Senha" style="max-width:220px" />
+            <button id="usrAdd" class="btn">Adicionar/Atualizar</button>
+          </div>
+          <div id="usrList"></div>
+          <div class="small">Obs.: <b>Jhonatan</b> não pode ser excluído e sempre será <b>Admin</b>.</div>
         </div>
       </section>
 
