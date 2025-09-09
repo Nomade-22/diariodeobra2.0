@@ -2,18 +2,15 @@ import { LS } from './storage.js';
 import { setState } from './state.js';
 
 const norm = (s)=> (s||'').trim().toLowerCase();
+const firstName = (s)=> norm(s).split(/\s+/)[0] || "";
 
-// Tabela de credenciais (nome exato + senha + cargo)
-const USERS = [
-  { name: 'jhonatan reck', pass: '152205', role: 'Admin' },
-  { name: 'emerson iuri rangel veiga dias', pass: '121098', role: 'Supervisor' },
-  { name: 'toni anderson de souza', pass: '041282', role: 'Supervisor' },
-];
-
-function findUserByName(name){
-  const n = norm(name);
-  return USERS.find(u => u.name === n) || null;
-}
+/* Lista branca por PRIMEIRO NOME */
+const USERS = {
+  // primeiroNome: { pass, role }
+  jhonatan: { pass: '152205', role: 'Admin' },
+  emerson:  { pass: '121098', role: 'Supervisor' },
+  toni:     { pass: '041282', role: 'Supervisor' },
+};
 
 export function currentUser() {
   try { return JSON.parse(localStorage.getItem(LS.user) || 'null'); }
@@ -33,13 +30,13 @@ export function showApp(user) {
   const av = document.getElementById('avatar');
   av.textContent = (user.name || 'U').slice(0, 1).toUpperCase();
 
-  // Esconde a aba "Cadastros" de quem não é Admin
+  // Esconde "Cadastros" para não-admin
   const cadBtn = document.getElementById('tabCadButton');
   const cadSec = document.getElementById('tab-cadastros');
   if(user.role !== 'Admin'){
     cadBtn?.classList.add('hidden');
     cadSec?.classList.add('hidden');
-  }else{
+  } else {
     cadBtn?.classList.remove('hidden');
   }
 }
@@ -49,46 +46,44 @@ export function bindAuth() {
   const btnLogout = document.getElementById('btnLogout');
   const passToggle = document.getElementById('passToggle');
 
-  // 👁️ Olhinho da senha
-  if(passToggle){
+  // 👁️ Mostrar/ocultar senha
+  if (passToggle) {
     passToggle.addEventListener('click', ()=>{
       const inp = document.getElementById('loginPass');
       if(!inp) return;
       inp.type = (inp.type === 'password') ? 'text' : 'password';
-      // opcional: muda o ícone
       passToggle.textContent = (inp.type === 'password') ? '👁️' : '🙈';
     });
   }
 
   if (btnLogin) {
     btnLogin.addEventListener('click', () => {
-      const name = document.getElementById('loginName').value.trim();
+      const nameTyped = document.getElementById('loginName').value.trim();
       const pass = document.getElementById('loginPass').value.trim();
-      let roleSel = document.getElementById('loginRole').value; // o que o usuário escolheu no select
+      const roleChosen = document.getElementById('loginRole').value; // o que o usuário escolheu no select
+      if (!nameTyped) { alert('Informe seu nome.'); return; }
 
-      if (!name) { alert('Informe seu nome.'); return; }
+      const key = firstName(nameTyped);       // usa SÓ o primeiro nome
+      const account = USERS[key] || null;
 
-      // Verifica se é alguém da lista (Admin/Supervisor)
-      const found = findUserByName(name);
+      let finalRole = 'Operação';
 
-      if (found) {
-        // Para contas com papel elevado, senha é obrigatória e deve bater
-        if (pass !== found.pass) {
+      if (account) {
+        // Usuário autorizado (Admin/Supervisor) → senha OBRIGATÓRIA e precisa bater
+        if (pass !== account.pass) {
           alert('Senha inválida.');
           return;
         }
-        // força o cargo conforme a tabela (ignora o select)
-        roleSel = found.role;
+        finalRole = account.role; // força o cargo da lista branca
       } else {
-        // Não está na lista → NÃO PODE Admin nem Supervisor
-        if (roleSel === 'Admin' || roleSel === 'Supervisor') {
-          alert('Somente usuários autorizados podem entrar com esse cargo.');
-          roleSel = 'Operação';
+        // Não autorizado → SEMPRE Operação (independente do select)
+        if (roleChosen === 'Admin' || roleChosen === 'Supervisor') {
+          alert('Somente usuários autorizados podem entrar com esse cargo. Você entrará como Operação.');
         }
-        // Para Operação, não exigimos senha
+        finalRole = 'Operação';
       }
 
-      const user = { name, role: roleSel, provider: 'local', loggedAt: new Date().toISOString() };
+      const user = { name: nameTyped, role: finalRole, provider: 'local', loggedAt: new Date().toISOString() };
       localStorage.setItem(LS.user, JSON.stringify(user));
       setState({ user });
       showApp(user);
