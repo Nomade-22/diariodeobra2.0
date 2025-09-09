@@ -42,6 +42,7 @@ const initAppUI = ()=>{
     renderReturnList:()=>renderReturnList(ctx)
   };
 
+  // primeiras renderizações
   renderEmployeesChoice(ctx);
   renderTools(()=>ctx.renderPicker());
   renderTeams(refreshAll);
@@ -49,18 +50,13 @@ const initAppUI = ()=>{
   ctx.renderPicker();
   refreshOpenOuts();
 
-  // Desabilita botões de cadastro se não for Admin
-  const isAdmin = (user && user.role === 'Admin');
-  const disableIfNotAdmin = (id)=>{const el=document.getElementById(id); if(el && !isAdmin){ el.disabled = true; el.title='Somente Admin'; el.classList.add('disabled'); }};
-  disableIfNotAdmin('toolAdd');
-  disableIfNotAdmin('teamAdd');
-  disableIfNotAdmin('jobAdd');
+  // === Botões "Adicionar" (somente Admin) ===
+  const isAdmin = () => user && user.role === 'Admin';
 
-  // Adição (só Admin efetiva)
   const btnToolAdd = document.getElementById('toolAdd');
   if(btnToolAdd){
     btnToolAdd.addEventListener('click', ()=>{
-      if(!isAdmin) return alert('Somente Admin pode cadastrar.');
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
       tools.push({ name:'', code:'', qty:1, obs:'' });
       write(LS.tools, tools);
       renderTools(()=>ctx.renderPicker());
@@ -71,7 +67,7 @@ const initAppUI = ()=>{
   const btnTeamAdd = document.getElementById('teamAdd');
   if(btnTeamAdd){
     btnTeamAdd.addEventListener('click', ()=>{
-      if(!isAdmin) return alert('Somente Admin pode cadastrar.');
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
       const val = (document.getElementById('teamNew').value||'').trim();
       if(!val) return;
       teams.push(val); write(LS.teams, teams);
@@ -83,12 +79,13 @@ const initAppUI = ()=>{
   const btnJobAdd = document.getElementById('jobAdd');
   if(btnJobAdd){
     btnJobAdd.addEventListener('click', ()=>{
-      if(!isAdmin) return alert('Somente Admin pode cadastrar.');
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
       const val = (document.getElementById('jobNew').value||'').trim();
       if(!val) return;
       jobs.push(val); write(LS.jobs, jobs);
       document.getElementById('jobNew').value='';
-      renderJobs(refreshAll); fillSelect(document.getElementById('outJobsite'), jobs);
+      renderJobs(refreshAll);
+      fillSelect(document.getElementById('outJobsite'), jobs);
     });
   }
 
@@ -97,6 +94,7 @@ const initAppUI = ()=>{
   bindReturn(ctx);
 
   function refreshAll(){
+    // re-render tudo após adicionar/editar/excluir
     fillSelect(document.getElementById('outJobsite'), jobs);
     renderTools(()=>ctx.renderPicker());
     renderTeams(refreshAll);
