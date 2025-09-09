@@ -44,6 +44,7 @@ const initAppUI = ()=>{
     renderReturnList:()=>renderReturnList(ctx)
   };
 
+  // Primeiros renders
   renderEmployeesChoice(ctx);
   renderTools(()=>ctx.renderPicker());
   renderTeams(refreshAll);
@@ -51,13 +52,57 @@ const initAppUI = ()=>{
   ctx.renderPicker();
   refreshOpenOuts();
 
-  // Adições (somente Admin) já protegidas por UI específica no renderTools/renderTeams/renderJobs
+  // === Botões "Adicionar" (evita listeners duplicados) ===
+  const isAdmin = () => user && user.role === 'Admin';
 
+  const btnToolAdd = document.getElementById('toolAdd');
+  if(btnToolAdd && !btnToolAdd.dataset.bound){
+    btnToolAdd.dataset.bound='1';
+    btnToolAdd.addEventListener('click', ()=>{
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+      tools.push({ name:'', code:'', qty:1, obs:'' });
+      write(LS.tools, tools);
+      renderTools(()=>ctx.renderPicker());
+      ctx.renderPicker();
+      const tcount=document.getElementById('toolsCount'); if(tcount) tcount.textContent=`${tools.length} itens`;
+    });
+  }
+
+  const btnTeamAdd = document.getElementById('teamAdd');
+  if(btnTeamAdd && !btnTeamAdd.dataset.bound){
+    btnTeamAdd.dataset.bound='1';
+    btnTeamAdd.addEventListener('click', ()=>{
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+      const val = (document.getElementById('teamNew').value||'').trim();
+      if(!val) return;
+      teams.push(val); write(LS.teams, teams);
+      document.getElementById('teamNew').value='';
+      renderTeams(refreshAll);
+      renderEmployeesChoice(ctx);
+    });
+  }
+
+  const btnJobAdd = document.getElementById('jobAdd');
+  if(btnJobAdd && !btnJobAdd.dataset.bound){
+    btnJobAdd.dataset.bound='1';
+    btnJobAdd.addEventListener('click', ()=>{
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+      const val = (document.getElementById('jobNew').value||'').trim();
+      if(!val) return;
+      jobs.push(val); write(LS.jobs, jobs);
+      document.getElementById('jobNew').value='';
+      renderJobs(refreshAll);
+      fillSelect(document.getElementById('outJobsite'), jobs);
+      bindFinanceTop(); // mantém finJob sincronizado
+    });
+  }
+
+  // exports / checkout / retorno
   bindExports();
   bindCheckout(ctx);
   bindReturn(ctx);
 
-  const isAdmin = ()=> user && user.role==='Admin';
+  // Financeiro & Usuários (apenas Admin)
   if(isAdmin()){
     bindFinanceTop(); renderFinance();
     bindUserTop(); renderUsers();
