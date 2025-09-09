@@ -5,6 +5,7 @@
 *{box-sizing:border-box} html,body{height:100%}
 body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif; color:var(--text); background:linear-gradient(to bottom,var(--bg1),var(--bg2)); }
 .container{max-width:1100px;margin:0 auto;padding:16px}
+
 .header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 8px}
 .h1{font-weight:800;font-size:22px}
 .badge{font-size:12px;color:var(--muted)}
@@ -14,6 +15,7 @@ body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial
 .btn.success{background:#0e3a2a;border-color:#115e3f;color:#ffffff}
 .btn.warn{background:#3a2a0e;border-color:#6b4d0b;color:#ffffff}
 .btn.danger{background:#3a0e12;border-color:#7a1f25;color:#ffffff}
+.btn.disabled{opacity:.5;cursor:not-allowed}
 
 .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
@@ -32,3 +34,33 @@ input,select,textarea{ width:100%;padding:10px;border:1px solid var(--border); b
 .headerUser{display:flex;gap:8px;align-items:center}
 .avatar{width:28px;height:28px;border-radius:50%;background:#29365a;display:flex;align-items:center;justify-content:center;font-weight:700}
 .loginWrap{max-width:420px;margin:40px auto}
+
+/* ====== NOVO: caixa bonita de funcionários ====== */
+.empbox{
+  background:#0a1430;border:1px solid var(--border);border-radius:12px;padding:10px;
+}
+.emp-toolbar{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;
+}
+.emp-toolbar input{
+  flex:1 1 220px;
+}
+.emp-toolbar .btn{
+  padding:8px 10px;border-radius:8px;
+}
+.emp-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(160px,1fr));
+  gap:8px;
+  max-height:200px;
+  overflow:auto;
+  padding:2px;
+}
+.emp-item{
+  display:flex;align-items:center;gap:8px;
+  background:#0f1833;border:1px solid var(--border);
+  border-radius:10px;padding:8px 10px;cursor:pointer;
+}
+.emp-item:hover{ border-color:#3553a6; }
+.emp-item input[type="checkbox"]{ width:16px;height:16px }
+.emp-name{ color:#eaf2ff; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
