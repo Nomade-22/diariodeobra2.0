@@ -6,7 +6,6 @@ const firstName = (s)=> norm(s).split(/\s+/)[0] || "";
 
 /* Lista branca por PRIMEIRO NOME */
 const USERS = {
-  // primeiroNome: { pass, role }
   jhonatan: { pass: '152205', role: 'Admin' },
   emerson:  { pass: '121098', role: 'Supervisor' },
   toni:     { pass: '041282', role: 'Supervisor' },
@@ -30,14 +29,18 @@ export function showApp(user) {
   const av = document.getElementById('avatar');
   av.textContent = (user.name || 'U').slice(0, 1).toUpperCase();
 
-  // Esconde "Cadastros" para não-admin
+  // Esconde "Cadastros" e "Financeiro" de quem não é Admin
   const cadBtn = document.getElementById('tabCadButton');
   const cadSec = document.getElementById('tab-cadastros');
+  const finBtn = document.getElementById('tabFinButton');
+  const finSec = document.getElementById('tab-finance');
+
   if(user.role !== 'Admin'){
-    cadBtn?.classList.add('hidden');
-    cadSec?.classList.add('hidden');
+    cadBtn?.classList.add('hidden'); cadSec?.classList.add('hidden');
+    finBtn?.classList.add('hidden'); finSec?.classList.add('hidden');
   } else {
     cadBtn?.classList.remove('hidden');
+    finBtn?.classList.remove('hidden');
   }
 }
 
@@ -46,7 +49,6 @@ export function bindAuth() {
   const btnLogout  = document.getElementById('btnLogout');
   const passToggle = document.getElementById('passToggle');
 
-  // 👁️ Mostrar/ocultar senha
   if (passToggle) {
     passToggle.addEventListener('click', ()=>{
       const inp = document.getElementById('loginPass');
@@ -62,20 +64,14 @@ export function bindAuth() {
       const pass      = document.getElementById('loginPass').value.trim();
       if (!nameTyped) { alert('Informe seu nome.'); return; }
 
-      const key     = firstName(nameTyped); // usa só o primeiro nome
+      const key     = firstName(nameTyped);
       const account = USERS[key] || null;
 
       let finalRole = 'Operação';
-
       if (account) {
-        // Usuário autorizado → senha OBRIGATÓRIA e precisa bater
-        if (pass !== account.pass) {
-          alert('Senha inválida.');
-          return;
-        }
+        if (pass !== account.pass) { alert('Senha inválida.'); return; }
         finalRole = account.role;
       } else {
-        // Não autorizado → SEMPRE Operação
         finalRole = 'Operação';
       }
 
