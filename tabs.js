@@ -1,13 +1,13 @@
+export function setupTabs(){
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t => t.addEventListener('click', ()=>{
+    // se o botão estiver escondido, ignora
+    if (t.id === 'tabCadButton' && t.classList.contains('hidden')) return;
 
-export function setupTabs() {
-  const sections={ saida:document.getElementById('tab-saida'), retorno:document.getElementById('tab-retorno'), cadastros:document.getElementById('tab-cadastros') };
-  document.body.addEventListener('click',(ev)=>{
-    const tabBtn = ev.target.closest('.tab');
-    if(tabBtn){
-      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-      tabBtn.classList.add('active');
-      Object.values(sections).forEach(s=> s.classList.add('hidden'));
-      sections[tabBtn.dataset.tab]?.classList.remove('hidden');
-    }
-  });
+    tabs.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const name = t.dataset.tab;
+    document.querySelectorAll('section[id^=tab-]').forEach(s=> s.classList.add('hidden'));
+    document.getElementById('tab-' + name).classList.remove('hidden');
+  }));
 }
