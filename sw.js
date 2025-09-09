@@ -1,5 +1,5 @@
-// sw.js — Service Worker com cache versionado e network-first para JS/HTML
-const CACHE = 'mp-cache-v6'; // <- aumente ao atualizar
+// sw.js — cache versionado + network-first para JS/HTML
+const CACHE = 'mp-cache-v8';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -7,24 +7,24 @@ self.addEventListener('install', (e) => {
     caches.open(CACHE).then((cache) =>
       cache.addAll([
         './',
-        './index.html?v=6',
-        './style.css?v=6',
-        './manifest.json?v=6',
-        './main.js?v=6',
-        './auth.js?v=6',
-        './state.js?v=6',
-        './ui.js?v=6',
-        './tabs.js?v=6',
-        './checkout.js?v=6',
-        './returns.js?v=6',
-        './render_return.js?v=6',
-        './openouts.js?v=6',
-        './exports.js?v=6',
-        './exports_bind.js?v=6',
-        './finance.js?v=6',
-        './ui_users.js?v=6',
-        './gas.js?v=6',
-        './gas_bind.js?v=6',
+        './index.html?v=8',
+        './style.css?v=8',
+        './manifest.json?v=8',
+        './main.js?v=8',
+        './auth.js?v=8',
+        './state.js?v=8',
+        './ui.js?v=8',
+        './tabs.js?v=8',
+        './checkout.js?v=8',
+        './returns.js?v=8',
+        './render_return.js?v=8',
+        './openouts.js?v=8',
+        './exports.js?v=8',
+        './exports_bind.js?v=8',
+        './finance.js?v=8',
+        './ui_users.js?v=8',
+        // './gas.js?v=8',
+        // './gas_bind.js?v=8',
       ])
     )
   );
@@ -40,7 +40,6 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  // network-first para scripts e documentos — evita ficar preso no cache
   if (req.destination === 'script' || req.destination === 'document') {
     e.respondWith(
       fetch(req).then(res => {
@@ -51,6 +50,5 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  // cache-first para o resto
   e.respondWith(caches.match(req).then(cached => cached || fetch(req)));
 });
