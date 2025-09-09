@@ -167,21 +167,57 @@ export function renderPicker(pickState){
   updateSelCount(pickState);
 }
 
-/* ===== Checkboxes de Funcionários na Saída ===== */
+/* ===== NOVO: UI bonita p/ Funcionários (com busca e botões) ===== */
 export function renderEmployeesChoice(ctx){
   const host = document.getElementById('outEmployees'); if(!host) return;
-  host.innerHTML = teams.map(name => `
-    <label style="display:flex;gap:8px;align-items:center;margin:4px 0">
-      <input type="checkbox" data-emp="${name}" ${ctx.employeesSelected.has(name)?'checked':''}/>
-      <span>${name}</span>
-    </label>
-  `).join('') || '<div class="small">Nenhum funcionário cadastrado ainda.</div>';
 
-  host.querySelectorAll('[data-emp]').forEach(ch=>{
-    ch.addEventListener('change', ()=>{
-      const n = ch.dataset.emp;
-      if(ch.checked) ctx.employeesSelected.add(n);
-      else ctx.employeesSelected.delete(n);
+  // toolbar + grid
+  host.classList.remove('list');
+  host.classList.add('empbox');
+  host.innerHTML = `
+    <div class="emp-toolbar">
+      <input id="empSearch" placeholder="Buscar funcionário..." />
+      <button id="empSelectAll" class="btn">Marcar todos</button>
+      <button id="empClearAll" class="btn">Limpar</button>
+    </div>
+    <div id="empGrid" class="emp-grid"></div>
+  `;
+
+  const grid = host.querySelector('#empGrid');
+  const search = host.querySelector('#empSearch');
+
+  function paint(filter=''){
+    const q = (filter||'').toLowerCase();
+    const data = teams.filter(n => n.toLowerCase().includes(q));
+    grid.innerHTML = data.map(name => `
+      <label class="emp-item">
+        <input type="checkbox" data-emp="${name}" ${ctx.employeesSelected.has(name)?'checked':''}/>
+        <span class="emp-name">${name}</span>
+      </label>
+    `).join('') || '<div class="small">Nenhum funcionário encontrado.</div>';
+
+    grid.querySelectorAll('[data-emp]').forEach(ch=>{
+      ch.addEventListener('change', ()=>{
+        const n = ch.dataset.emp;
+        if(ch.checked) ctx.employeesSelected.add(n);
+        else ctx.employeesSelected.delete(n);
+      });
     });
+  }
+
+  paint();
+
+  // eventos da toolbar
+  search.addEventListener('input', ()=> paint(search.value));
+
+  host.querySelector('#empSelectAll')?.addEventListener('click', ()=>{
+    // marca todos do filtro atual
+    const q = (search.value||'').toLowerCase();
+    teams.filter(n=>n.toLowerCase().includes(q)).forEach(n=> ctx.employeesSelected.add(n));
+    paint(search.value);
+  });
+  host.querySelector('#empClearAll')?.addEventListener('click', ()=>{
+    ctx.employeesSelected.clear();
+    paint(search.value);
   });
 }
