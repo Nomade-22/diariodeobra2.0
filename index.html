@@ -14,13 +14,11 @@
     <div class="loginWrap card">
       <h2>Entrar</h2>
       <p class="small">Faça login para registrar saídas e retornos.</p>
-
       <div class="row" style="grid-template-columns:1fr;gap:10px">
         <div>
           <label>Nome completo</label>
           <input id="loginName" placeholder="Ex.: Maria Souza" />
         </div>
-
         <div>
           <label>Senha</label>
           <div style="display:flex;gap:8px;align-items:center">
@@ -28,7 +26,6 @@
             <button id="passToggle" class="btn" type="button" title="Mostrar/ocultar senha">👁️</button>
           </div>
         </div>
-
         <button id="btnLogin" class="btn primary">Entrar</button>
       </div>
     </div>
@@ -60,6 +57,8 @@
         <button class="tab active" data-tab="saida">Saída</button>
         <button class="tab" data-tab="retorno">Retorno</button>
         <button class="tab" data-tab="cadastros" id="tabCadButton">Cadastros</button>
+        <!-- NOVO: botão da aba Financeiro (mostrado só para Admin pelo JS) -->
+        <button class="tab" data-tab="finance" id="tabFinButton">Financeiro</button>
       </div>
 
       <!-- SAÍDA -->
@@ -201,6 +200,43 @@
             <button id="btnExportOut" class="btn">CSV de Saídas</button>
             <button id="btnExportRet" class="btn">CSV de Retornos</button>
           </div>
+        </div>
+      </section>
+
+      <!-- NOVO: FINANCEIRO (somente Admin) -->
+      <section id="tab-finance" class="card hidden">
+        <h2>Financeiro (Admin)</h2>
+
+        <div class="card" style="margin-bottom:10px">
+          <h3>Novo contrato / OF</h3>
+          <div class="row" style="grid-template-columns:200px 1fr 200px 160px;gap:10px">
+            <div>
+              <label>Nº OF</label>
+              <input id="finOf" placeholder="Ex.: 12345" />
+            </div>
+            <div>
+              <label>Obra/Cliente</label>
+              <select id="finJob"></select>
+            </div>
+            <div>
+              <label>Valor contratado (R$)</label>
+              <input id="finValue" type="number" step="0.01" placeholder="0,00" />
+            </div>
+            <div style="display:flex;align-items:end">
+              <button id="finAdd" class="btn primary" style="width:100%">Adicionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h3>Contratos</h3>
+            <div style="display:flex;gap:8px">
+              <button id="finExport" class="btn">Exportar CSV</button>
+            </div>
+          </div>
+
+          <div id="finList" class="list"></div>
         </div>
       </section>
     </div>
