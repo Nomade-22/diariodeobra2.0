@@ -14,14 +14,14 @@
     <div class="loginWrap card">
       <h2>Entrar</h2>
       <p class="small">Faça login para registrar saídas e retornos.</p>
-      <div class="row" style="grid-template-columns:1fr;gap:10px">
+      <div class="row onecol">
         <div>
           <label>Nome completo</label>
           <input id="loginName" placeholder="Ex.: Maria Souza" />
         </div>
         <div>
           <label>Senha</label>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div class="inline">
             <input id="loginPass" type="password" placeholder="••••••" />
             <button id="passToggle" class="btn" type="button" title="Mostrar/ocultar senha">👁️</button>
           </div>
@@ -37,7 +37,7 @@
       <div class="header">
         <div>
           <div class="h1">Controle de Equipes & Ferramentas</div>
-          <div class="badge">PWA • GitHub Pages • Exporta CSV/XML/Excel • Login</div>
+          <div class="badge">PWA • GitHub Pages • Exporta PDF • Login</div>
         </div>
         <div class="headerUser">
           <div class="avatar" id="avatar">U</div>
@@ -45,10 +45,8 @@
             <div id="userName" class="small">Usuário</div>
             <div class="small"><span id="userRole">Operação</span> — <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a></div>
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button id="btnExportAll" class="btn">CSV (Tudo)</button>
-            <button id="btnExportXLS" class="btn">Excel (Tudo)</button>
-            <button id="btnExportXML" class="btn">XML (Tudo)</button>
+          <div class="toolsBar">
+            <button id="btnExportPDF" class="btn">Exportar PDF</button>
           </div>
         </div>
       </div>
@@ -57,17 +55,16 @@
         <button class="tab active" data-tab="saida">Saída</button>
         <button class="tab" data-tab="retorno">Retorno</button>
         <button class="tab" data-tab="cadastros" id="tabCadButton">Cadastros</button>
-        <!-- NOVO: botão da aba Financeiro (mostrado só para Admin pelo JS) -->
         <button class="tab" data-tab="finance" id="tabFinButton">Financeiro</button>
       </div>
 
       <!-- SAÍDA -->
       <section id="tab-saida" class="card">
         <h2>Registrar Saída</h2>
-        <div class="row" style="grid-template-columns:repeat(2,1fr);gap:10px">
+        <div class="row twocol">
           <div>
             <label>Funcionários (marque os participantes)</label>
-            <div id="outEmployees" class="list" style="max-height:160px; padding:8px; border:1px solid var(--border); border-radius:10px; background:#0a1430"></div>
+            <div id="outEmployees" class="empbox"></div>
             <div class="small">Cadastre nomes na aba <b>Cadastros → Funcionários</b> (somente Admin).</div>
           </div>
           <div>
@@ -93,13 +90,13 @@
           </div>
         </div>
 
-        <div style="margin-top:10px">
+        <div class="mt">
           <label>Observações</label>
           <textarea id="outObs" placeholder="Condições, ferramentas especiais, etc."></textarea>
         </div>
 
-        <div class="card" style="margin-top:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card mt">
+          <div class="between">
             <h3>Ferramentas para este trabalho</h3>
             <span class="small" id="selCount">0 selecionadas</span>
           </div>
@@ -109,13 +106,13 @@
           <div id="pickList" class="list"></div>
         </div>
 
-        <div style="margin-top:10px">
+        <div class="mt">
           <label>Foto rápida (opcional)</label>
           <input id="outPhoto" type="file" accept="image/*" capture="environment" />
           <div class="small" id="outPhotoCount">Nenhuma foto</div>
         </div>
 
-        <div style="margin-top:10px">
+        <div class="mt">
           <button id="btnCheckout" class="btn success">Confirmar Saída</button>
         </div>
       </section>
@@ -123,7 +120,7 @@
       <!-- RETORNO -->
       <section id="tab-retorno" class="card hidden">
         <h2>Registrar Retorno</h2>
-        <div class="row" style="grid-template-columns:2fr 1fr 1fr;gap:10px">
+        <div class="row threecol">
           <div>
             <label>Saída em aberto</label>
             <select id="retOpen"></select>
@@ -138,48 +135,47 @@
           </div>
         </div>
 
-        <div style="margin-top:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="mt">
+          <div class="between">
             <h3>Checklist de Retorno</h3>
             <span id="retMissing" class="small"></span>
           </div>
           <div id="retList"></div>
         </div>
 
-        <div style="margin-top:10px">
+        <div class="mt">
           <label>Observações gerais</label>
           <textarea id="retNotes"></textarea>
         </div>
 
-        <div style="margin-top:10px">
+        <div class="mt">
           <label>Foto do retorno (opcional)</label>
           <input id="retPhoto" type="file" accept="image/*" capture="environment" />
           <div class="small" id="retPhotoCount">Nenhuma foto</div>
         </div>
 
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-          <button id="btnExportReturn" class="btn">CSV do Retorno</button>
+        <div class="right mt">
           <button id="btnFinishReturn" class="btn success">Confirmar Retorno</button>
         </div>
       </section>
 
       <!-- CADASTROS (somente Admin) -->
       <section id="tab-cadastros" class="hidden">
-        <div class="row" style="gap:10px;grid-template-columns:repeat(3,1fr)">
+        <div class="row threecol">
           <div class="card">
             <h3>Ferramentas (Catálogo)</h3>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="between mb8">
               <span class="small" id="toolsCount">0 itens</span>
               <button id="toolAdd" class="btn">Adicionar</button>
             </div>
-            <div class="gridhead" style="grid-template-columns:1fr 160px 100px 1fr">
-              <div>Ferramenta</div><div>Código</div><div>Qtd</div><div>Obs</div>
+            <div class="gridhead toolshead">
+              <div>Ferramenta</div><div>Código</div><div>Qtd</div><div>Obs</div><div style="width:40px"></div>
             </div>
             <div id="toolsList" class="list"></div>
           </div>
           <div class="card">
             <h3>Funcionários</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="inline mb8">
               <input id="teamNew" placeholder="Nome do funcionário" />
               <button id="teamAdd" class="btn">Adicionar</button>
             </div>
@@ -187,29 +183,22 @@
           </div>
           <div class="card">
             <h3>Obras/Clientes</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="inline mb8">
               <input id="jobNew" placeholder="Nome da obra/cliente" />
               <button id="jobAdd" class="btn">Adicionar</button>
             </div>
             <ul id="jobsList"></ul>
           </div>
         </div>
-        <div class="card" style="margin-top:10px">
-          <h3>Relatórios Rápidos</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button id="btnExportOut" class="btn">CSV de Saídas</button>
-            <button id="btnExportRet" class="btn">CSV de Retornos</button>
-          </div>
-        </div>
       </section>
 
-      <!-- NOVO: FINANCEIRO (somente Admin) -->
+      <!-- FINANCEIRO (somente Admin) -->
       <section id="tab-finance" class="card hidden">
         <h2>Financeiro (Admin)</h2>
 
-        <div class="card" style="margin-bottom:10px">
+        <div class="card mb8">
           <h3>Novo contrato / OF</h3>
-          <div class="row" style="grid-template-columns:200px 1fr 200px 160px;gap:10px">
+          <div class="row finrow">
             <div>
               <label>Nº OF</label>
               <input id="finOf" placeholder="Ex.: 12345" />
@@ -222,20 +211,17 @@
               <label>Valor contratado (R$)</label>
               <input id="finValue" type="number" step="0.01" placeholder="0,00" />
             </div>
-            <div style="display:flex;align-items:end">
-              <button id="finAdd" class="btn primary" style="width:100%">Adicionar</button>
+            <div class="alignEnd">
+              <button id="finAdd" class="btn primary w100">Adicionar</button>
             </div>
           </div>
         </div>
 
         <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="between mb8">
             <h3>Contratos</h3>
-            <div style="display:flex;gap:8px">
-              <button id="finExport" class="btn">Exportar CSV</button>
-            </div>
+            <button id="finExportPDF" class="btn">Exportar PDF</button>
           </div>
-
           <div id="finList" class="list"></div>
         </div>
       </section>
