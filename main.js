@@ -1,6 +1,6 @@
 import { setupTabs } from './tabs.js';
 import { LS, write } from './state.js';
-import { tools, teams, jobs, outs, rets, user, setState } from './state.js';
+import { tools, teams, jobs, user, setState } from './state.js';
 import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
 import { bindCheckout } from './checkout.js';
 import { bindReturn } from './returns.js';
@@ -9,6 +9,7 @@ import { refreshOpenOuts } from './openouts.js';
 import { bindExports } from './exports_bind.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
 import { renderFinance, bindFinanceTop } from './finance.js';
+import { renderUsers, bindUserTop } from './ui_users.js';
 
 const chip = document.getElementById('diag'); const say = t=> chip && (chip.textContent=t);
 
@@ -50,54 +51,16 @@ const initAppUI = ()=>{
   ctx.renderPicker();
   refreshOpenOuts();
 
-  // Adicionar (somente Admin)
-  const isAdmin = () => user && user.role === 'Admin';
-  const btnToolAdd = document.getElementById('toolAdd');
-  if(btnToolAdd){
-    btnToolAdd.addEventListener('click', ()=>{
-      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
-      tools.push({ name:'', code:'', qty:1, obs:'' });
-      write(LS.tools, tools);
-      renderTools(()=>ctx.renderPicker());
-      ctx.renderPicker();
-      const tcount=document.getElementById('toolsCount'); if(tcount) tcount.textContent=`${tools.length} itens`;
-    });
-  }
-  const btnTeamAdd = document.getElementById('teamAdd');
-  if(btnTeamAdd){
-    btnTeamAdd.addEventListener('click', ()=>{
-      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
-      const val = (document.getElementById('teamNew').value||'').trim();
-      if(!val) return;
-      teams.push(val); write(LS.teams, teams);
-      document.getElementById('teamNew').value='';
-      renderTeams(refreshAll);
-      renderEmployeesChoice(ctx);
-    });
-  }
-  const btnJobAdd = document.getElementById('jobAdd');
-  if(btnJobAdd){
-    btnJobAdd.addEventListener('click', ()=>{
-      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
-      const val = (document.getElementById('jobNew').value||'').trim();
-      if(!val) return;
-      jobs.push(val); write(LS.jobs, jobs);
-      document.getElementById('jobNew').value='';
-      renderJobs(refreshAll);
-      fillSelect(document.getElementById('outJobsite'), jobs);
-      // manter select do financeiro em sincronia
-      bindFinanceTop();
-    });
-  }
+  // Adições (somente Admin) já protegidas por UI específica no renderTools/renderTeams/renderJobs
 
   bindExports();
   bindCheckout(ctx);
   bindReturn(ctx);
 
-  // Financeiro (se for Admin)
+  const isAdmin = ()=> user && user.role==='Admin';
   if(isAdmin()){
-    bindFinanceTop();   // preenche finJob e liga botões
-    renderFinance();    // desenha lista
+    bindFinanceTop(); renderFinance();
+    bindUserTop(); renderUsers();
   }
 
   function refreshAll(){
@@ -107,7 +70,7 @@ const initAppUI = ()=>{
     renderJobs(refreshAll);
     renderEmployeesChoice(ctx);
     ctx.renderPicker();
-    if(isAdmin()){ bindFinanceTop(); renderFinance(); }
+    if(isAdmin()){ bindFinanceTop(); renderFinance(); renderUsers(); }
   }
 };
 
