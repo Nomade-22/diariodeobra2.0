@@ -1,31 +1,23 @@
 // main.js
-// Inicialização da interface, binds e integrações (PDF/Excel + Google Sheets)
-
-import { setupTabs } from './abas.js';
-import { LS, write } from './estado.js';
-import { tools, teams, jobs, user, setState } from './estado.js';
+import { setupTabs } from './tabs.js';
+import { LS, write } from './state.js';
+import { tools, teams, jobs, user, setState } from './state.js';
 import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
 import { bindCheckout } from './checkout.js';
-import { bindReturn } from './retoma.js';
+import { bindReturn } from './returns.js';
 import { renderReturnList } from './render_return.js';
 import { refreshOpenOuts } from './openouts.js';
 import { bindExports } from './exports_bind.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
-import { renderFinance, bindFinanceTop } from './finanças.js';
+import { renderFinance, bindFinanceTop } from './finance.js';
 import { renderUsers, bindUserTop } from './ui_users.js';
-
-// Integração Google (fila offline / reenviar)
 import { retryQueue } from './gas.js';
 
 const chip = document.getElementById('diag');
 const say  = (t)=> chip && (chip.textContent = t);
 
 async function registerSW(){
-  try{
-    if('serviceWorker' in navigator){
-      await navigator.serviceWorker.register('./sw.js');
-    }
-  }catch(e){}
+  try{ if('serviceWorker' in navigator){ await navigator.serviceWorker.register('./sw.js'); } }catch(e){}
 }
 
 say('iniciando…');
@@ -35,7 +27,7 @@ bindAuth();
 const u = currentUser();
 if(u){ setState({user:u}); showApp(u); } else { showLogin(); }
 
-// tenta reenviar o que ficou na fila (offline) ao abrir
+// tenta reenviar fila offline ao abrir
 retryQueue();
 
 let initialized = false;
@@ -46,7 +38,6 @@ const initAppUI = ()=>{
   setupTabs();
   fillSelect(document.getElementById('outJobsite'), jobs);
 
-  // datas padrão
   const outTime = document.getElementById('outTime');
   if(outTime) outTime.value = new Date().toISOString().slice(0,16);
   const outNow  = document.getElementById('outNow');
@@ -55,7 +46,6 @@ const initAppUI = ()=>{
   const retTime = document.getElementById('retTime');
   if(retTime) retTime.value = new Date().toISOString().slice(0,16);
 
-  // contexto compartilhado entre telas
   const ctx = {
     outPhotos:[], retPhotos:[],
     pickState:{}, currentReturn:null,
@@ -65,7 +55,6 @@ const initAppUI = ()=>{
     renderReturnList: () => renderReturnList(ctx)
   };
 
-  // renders iniciais
   renderEmployeesChoice(ctx);
   renderTools(()=>ctx.renderPicker());
   renderTeams(refreshAll);
@@ -73,12 +62,10 @@ const initAppUI = ()=>{
   ctx.renderPicker();
   refreshOpenOuts();
 
-  // binds principais
   bindExports();
   bindCheckout(ctx);
   bindReturn(ctx);
 
-  // Admin-only
   const isAdmin = ()=> user && user.role === 'Admin';
   if(isAdmin()){
     bindFinanceTop(); renderFinance();
@@ -98,7 +85,6 @@ const initAppUI = ()=>{
     }
   }
 
-  // Botões "Adicionar" (evita listeners duplicados)
   const guardBind = (id, fn)=>{
     const el = document.getElementById(id);
     if(!el || el.dataset.bound) return;
@@ -140,9 +126,7 @@ const initAppUI = ()=>{
   });
 };
 
-// se já está logado, sobe a UI
 if(u){ initAppUI(); }
-// reinit após login
 document.addEventListener('user:login', ()=>{ initAppUI(); retryQueue(); });
 
 say('pronto');
