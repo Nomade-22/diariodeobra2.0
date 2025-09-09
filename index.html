@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Controle de Equipes & Ferramentas</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="manifest" href="manifest.json?v=6">
   <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
@@ -43,7 +43,10 @@
           <div class="avatar" id="avatar">U</div>
           <div>
             <div id="userName" class="small">Usuário</div>
-            <div class="small"><span id="userRole">Operação</span> — <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a></div>
+            <div class="small">
+              <span id="userRole">Operação</span> —
+              <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a>
+            </div>
           </div>
           <div class="toolsBar">
             <button id="btnExportPDF" class="btn hidden">Relatório PDF</button>
@@ -208,8 +211,8 @@
   <div id="diag" class="chip">carregando…</div>
 
   <!-- Scripts principais -->
-  <script type="module" src="main.js"></script>
-  <!-- Integração Google (escuta os botões e envia para o Apps Script) -->
-  <script type="module" src="gas_bind.js"></script>
+  <script type="module" src="main.js?v=6"></script>
+  <!-- Integração Google (escuta botões e envia ao Apps Script) -->
+  <script type="module" src="gas_bind.js?v=6"></script>
 </body>
 </html>
