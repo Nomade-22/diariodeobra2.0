@@ -2,9 +2,7 @@
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
 /* ========= Utils ========= */
-const norm = (s)=> (s||'')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-  .trim().toLowerCase();
+const norm = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 const FIRST = (s)=> (String(s||'').trim().split(/\s+/)[0]||'');
 
 /* ========= Base de usuários ========= */
@@ -119,9 +117,8 @@ function doLogout(){
 
 /* ========= Bind RESILIENTE ========= */
 export function bindAuth() {
-  // tenta ligar eventos até encontrar os elementos (evita corrida de carregamento)
   const start = Date.now();
-  const MAX_MS = 8000; // tenta por até 8s (é leve, intervalo pequeno)
+  const MAX_MS = 8000;
 
   const timer = setInterval(()=>{
     const btnLogin   = document.getElementById('btnLogin');
@@ -163,7 +160,6 @@ export function bindAuth() {
       });
     }
 
-    // Se todos os principais já estão ligados, para o polling
     const ok = btnLogin?.dataset.bound && passToggle?.dataset.bound;
     if(ok || (Date.now()-start) > MAX_MS){
       clearInterval(timer);
@@ -171,7 +167,7 @@ export function bindAuth() {
   }, 150);
 }
 
-/* ========= (opcional) helpers p/ tela de usuários ========= */
+/* ========= Helpers (opcionais) ========= */
 export function listUsers(){ return loadUsers(); }
 export function upsertUser(u){
   const list = loadUsers();
