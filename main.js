@@ -1,9 +1,17 @@
-// main.js — inicialização em modo seguro (sem GAS agora)
+// main.js — v8 (Cadastros “oficial”: adicionar/editar/excluir funcionando)
 
 import { setupTabs } from './tabs.js';
 import { LS, write } from './state.js';
 import { tools, teams, jobs, user, setState } from './state.js';
-import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
+import {
+  fillSelect,
+  renderTools,
+  renderTeams,
+  renderJobs,
+  renderPicker,
+  renderEmployeesChoice,
+  bindCadastroDelegation
+} from './ui.js';
 import { bindCheckout } from './checkout.js';
 import { bindReturn } from './returns.js';
 import { renderReturnList } from './render_return.js';
@@ -19,7 +27,7 @@ const say  = (t)=> chip && (chip.textContent = t);
 
 window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecido')));
 
-// derruba SWs antigos e caches no primeiro load
+// derruba SWs antigos e registra o novo (mantemos v=8)
 (async ()=>{
   if ('serviceWorker' in navigator) {
     try {
@@ -27,7 +35,6 @@ window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecid
       for (const r of regs) await r.unregister();
       const keys = await caches.keys();
       for (const k of keys) await caches.delete(k);
-      // registra o novo SW
       await navigator.serviceWorker.register('./sw.js?v=8');
     } catch(e){}
   }
@@ -36,16 +43,16 @@ window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecid
 function initAppUI(){
   setupTabs();
 
+  // selects & horários padrão
   fillSelect(document.getElementById('outJobsite'), jobs);
-
   const outTime = document.getElementById('outTime');
   if(outTime) outTime.value = new Date().toISOString().slice(0,16);
   const outNow  = document.getElementById('outNow');
   if(outNow) outNow.textContent = 'Agora: ' + new Date().toLocaleString('pt-BR');
-
   const retTime = document.getElementById('retTime');
   if(retTime) retTime.value = new Date().toISOString().slice(0,16);
 
+  // contexto da tela (saída & retorno)
   const ctx = {
     outPhotos:[], retPhotos:[],
     pickState:{}, currentReturn:null,
@@ -55,32 +62,84 @@ function initAppUI(){
     renderReturnList: () => renderReturnList(ctx)
   };
 
+  // render inicial
   renderEmployeesChoice(ctx);
   renderTools(()=>ctx.renderPicker());
-  renderTeams(()=>{});
-  renderJobs(()=>{});
+  renderTeams(refreshAll);
+  renderJobs(refreshAll);
   ctx.renderPicker();
   refreshOpenOuts();
 
+  // exportações e fluxos principais
   bindExports();
   bindCheckout(ctx);
   bindReturn(ctx);
 
-  // Se quiser reativar Financeiro/Usuários depois:
-  // const isAdmin = ()=> user && user.role === 'Admin';
-  // if(isAdmin()){
-  //   bindFinanceTop(); renderFinance();
-  //   bindUserTop();    renderUsers();
-  // }
+  // Delegação para CADASTROS (funciona mesmo após re-render)
+  bindCadastroDelegation({
+    onToolsChange: () => { write(LS.tools, tools); renderTools(()=>ctx.renderPicker()); ctx.renderPicker(); },
+    onTeamsChange: () => { write(LS.teams, teams); renderTeams(refreshAll); renderEmployeesChoice(ctx); },
+    onJobsChange:  () => { write(LS.jobs,  jobs);  renderJobs(refreshAll);  fillSelect(document.getElementById('outJobsite'), jobs); }
+  });
+
+  // Botões “Adicionar” (simples, só inserem; edição/exclusão é por delegação no ui.js)
+  const isAdmin = ()=> user && user.role === 'Admin';
+  const bindOnce = (id, fn)=>{
+    const el = document.getElementById(id);
+    if(!el || el.dataset.bound) return;
+    el.dataset.bound = '1';
+    el.addEventListener('click', fn);
+  };
+
+  bindOnce('toolAdd', ()=>{
+    if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+    tools.push({ name:'', code:'', qty:1, obs:'' });
+    write(LS.tools, tools);
+    renderTools(()=>ctx.renderPicker());
+    ctx.renderPicker();
+  });
+
+  bindOnce('teamAdd', ()=>{
+    if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+    const val = (document.getElementById('teamNew').value||'').trim();
+    if(!val) return;
+    teams.push(val);
+    document.getElementById('teamNew').value='';
+    write(LS.teams, teams);
+    renderTeams(refreshAll);
+    renderEmployeesChoice(ctx);
+  });
+
+  bindOnce('jobAdd', ()=>{
+    if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+    const val = (document.getElementById('jobNew').value||'').trim();
+    if(!val) return;
+    jobs.push(val);
+    document.getElementById('jobNew').value='';
+    write(LS.jobs, jobs);
+    renderJobs(refreshAll);
+    fillSelect(document.getElementById('outJobsite'), jobs);
+  });
+
+  // if(isAdmin()){ bindFinanceTop(); renderFinance(); bindUserTop(); renderUsers(); }
+
+  function refreshAll(){
+    fillSelect(document.getElementById('outJobsite'), jobs);
+    renderTools(()=>ctx.renderPicker());
+    renderTeams(refreshAll);
+    renderJobs(refreshAll);
+    renderEmployeesChoice(ctx);
+    ctx.renderPicker();
+  }
 }
 
 function init(){
   say('iniciando…');
-  bindAuth();              // login + olhinho
-  const u = currentUser(); // restaura sessão
-  if(u){ showApp(u); initAppUI(); }
-  else { showLogin(); }
-  document.addEventListener('user:login', ()=>{ initAppUI(); });
+  bindAuth();
+  // retryQueue(); // quando reativar GAS
+  const u = currentUser();
+  if(u){ showApp(u); initAppUI(); } else { showLogin(); }
+  document.addEventListener('user:login', ()=>{ initAppUI(); /*retryQueue();*/ });
   say('pronto');
 }
 
