@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEBUG Login</title>
+<link rel="stylesheet" href="style.css?v=7">
+<style>
+  body{padding:16px;font-family:Arial,Helvetica,sans-serif}
+  .card{border:1px solid #ccc;border-radius:8px;padding:16px}
+  .row>div{margin-bottom:8px}
+  .btn{padding:10px 14px;border:0;border-radius:8px;background:#0ea5e9;color:#fff}
+  #diag{position:fixed;right:12px;bottom:12px;background:#111;color:#fff;padding:8px 10px;border-radius:999px;font-size:12px;opacity:.9}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2>Entrar (DEBUG)</h2>
+    <div class="row">
+      <div>
+        <label>Nome</label>
+        <input id="loginName" placeholder="Jhonatan">
+      </div>
+      <div>
+        <label>Senha</label>
+        <input id="loginPass" type="password" placeholder="152205">
+        <button id="passToggle" class="btn" type="button">👁️</button>
+      </div>
+      <button id="btnLogin" class="btn">Entrar</button>
+    </div>
+  </div>
+
+  <div id="diag">carregando…</div>
+
+<script type="module">
+  // Modo seguro: derruba SW + limpa cache
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+      const keys = await caches.keys();
+      for (const k of keys) await caches.delete(k);
+    } catch(e){}
+  }
+
+  // Pequeno “mock” de state.js só para validar login aqui
+  const LS = { user: 'mp_user' };
+  const users = [
+    { login:'jhonatan', name:'Jhonatan reck', role:'Admin', pass:'152205' },
+    { login:'emerson',  name:'Emerson Iuri Rangel Veiga Dias', role:'Supervisor', pass:'121098' },
+    { login:'toni',     name:'Toni Anderson de Souza', role:'Supervisor', pass:'041282' },
+  ];
+
+  const diag = document.getElementById('diag');
+  const norm = s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  const first = s=>(String(s||'').trim().split(/\s+/)[0]||'');
+
+  function findAcc(name){
+    const k = norm(first(name));
+    return users.find(u => norm(u.login||first(u.name))===k) || null;
+  }
+
+  const passToggle = document.getElementById('passToggle');
+  const nameEl = document.getElementById('loginName');
+  const passEl = document.getElementById('loginPass');
+  const btn = document.getElementById('btnLogin');
+
+  passToggle.addEventListener('click', ()=>{
+    passEl.type = passEl.type==='password' ? 'text' : 'password';
+    passToggle.textContent = passEl.type==='password' ? '👁️' : '🙈';
+  });
+
+  btn.addEventListener('click', ()=>{
+    const acc = findAcc(nameEl.value);
+    if(!acc) { alert('Usuário não encontrado'); return; }
+    if(passEl.value !== acc.pass) { alert('Senha inválida'); return; }
+    localStorage.setItem(LS.user, JSON.stringify({name:acc.name, role:acc.role}));
+    alert('Login OK: ' + acc.name + ' (' + acc.role + ')');
+  });
+
+  diag.textContent = 'pronto';
+</script>
+</body>
+</html>
