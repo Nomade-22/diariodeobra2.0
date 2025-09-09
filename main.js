@@ -1,4 +1,5 @@
-// main.js
+// main.js — inicialização da UI e binds principais
+
 import { setupTabs } from './tabs.js';
 import { LS, write } from './state.js';
 import { tools, teams, jobs, user, setState } from './state.js';
@@ -16,26 +17,16 @@ import { retryQueue } from './gas.js';
 const chip = document.getElementById('diag');
 const say  = (t)=> chip && (chip.textContent = t);
 
+// Mostra erro no chip se algo quebrar
+window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecido')));
+
 async function registerSW(){
-  try{ if('serviceWorker' in navigator){ await navigator.serviceWorker.register('./sw.js'); } }catch(e){}
+  try{ if('serviceWorker' in navigator){ await navigator.serviceWorker.register('./sw.js?v=6'); } }catch(e){}
 }
 
-say('iniciando…');
-registerSW();
-
-bindAuth();
-const u = currentUser();
-if(u){ setState({user:u}); showApp(u); } else { showLogin(); }
-
-// tenta reenviar fila offline ao abrir
-retryQueue();
-
-let initialized = false;
-const initAppUI = ()=>{
-  if(initialized) return;
-  initialized = true;
-
+function initAppUI(){
   setupTabs();
+
   fillSelect(document.getElementById('outJobsite'), jobs);
 
   const outTime = document.getElementById('outTime');
@@ -85,6 +76,7 @@ const initAppUI = ()=>{
     }
   }
 
+  // Botões "Adicionar"
   const guardBind = (id, fn)=>{
     const el = document.getElementById(id);
     if(!el || el.dataset.bound) return;
@@ -93,7 +85,7 @@ const initAppUI = ()=>{
   };
 
   guardBind('toolAdd', ()=>{
-    if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+    if(!(user && user.role === 'Admin')) return alert('Somente Admin pode cadastrar.');
     tools.push({ name:'', code:'', qty:1, obs:'' });
     write(LS.tools, tools);
     const tcount = document.getElementById('toolsCount');
@@ -103,30 +95,39 @@ const initAppUI = ()=>{
   });
 
   guardBind('teamAdd', ()=>{
-    if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+    if(!(user && user.role === 'Admin')) return alert('Somente Admin pode cadastrar.');
     const val = (document.getElementById('teamNew').value||'').trim();
     if(!val) return;
     teams.push(val);
     write(LS.teams, teams);
     document.getElementById('teamNew').value='';
-    renderTeams(refreshAll);
+    renderTeams(()=>{});
     renderEmployeesChoice(ctx);
   });
 
   guardBind('jobAdd', ()=>{
-    if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+    if(!(user && user.role === 'Admin')) return alert('Somente Admin pode cadastrar.');
     const val = (document.getElementById('jobNew').value||'').trim();
     if(!val) return;
     jobs.push(val);
     write(LS.jobs, jobs);
     document.getElementById('jobNew').value='';
-    renderJobs(refreshAll);
+    renderJobs(()=>{});
     fillSelect(document.getElementById('outJobsite'), jobs);
-    bindFinanceTop(); // mantém select do financeiro sincronizado
+    bindFinanceTop();
   });
-};
+}
 
-if(u){ initAppUI(); }
-document.addEventListener('user:login', ()=>{ initAppUI(); retryQueue(); });
+function init(){
+  say('iniciando…');
+  registerSW();
+  bindAuth();              // liga login/olhinho (resiliente no auth.js)
+  retryQueue();            // tenta enviar fila offline
+  const u = currentUser(); // restaura sessão
+  if(u){ showApp(u); initAppUI(); }
+  else { showLogin(); }
+  document.addEventListener('user:login', ()=>{ initAppUI(); retryQueue(); });
+  say('pronto');
+}
 
-say('pronto');
+document.addEventListener('DOMContentLoaded', init);
