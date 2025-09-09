@@ -1,7 +1,7 @@
 import { LS } from './storage.js';
 import { setState } from './state.js';
 
-function normalizeName(s){ return (s||'').trim().toLowerCase(); }
+const norm = (s)=> (s||'').trim().toLowerCase();
 
 export function currentUser() {
   try { return JSON.parse(localStorage.getItem(LS.user) || 'null'); }
@@ -19,7 +19,7 @@ export function showApp(user) {
   const av = document.getElementById('avatar');
   av.textContent = (user.name || 'U').slice(0, 1).toUpperCase();
 
-  // Controle de acesso: esconde a aba Cadastros para não-admin
+  // esconder Cadastros para não-admin
   const cadBtn = document.getElementById('tabCadButton');
   const cadSec = document.getElementById('tab-cadastros');
   if(user.role !== 'Admin'){
@@ -33,6 +33,15 @@ export function showApp(user) {
 export function bindAuth() {
   const btnLogin = document.getElementById('btnLogin');
   const btnLogout = document.getElementById('btnLogout');
+  const passToggle = document.getElementById('passToggle');
+
+  // olhinho da senha
+  if(passToggle){
+    passToggle.addEventListener('click', ()=>{
+      const inp = document.getElementById('loginPass');
+      inp.type = (inp.type === 'password') ? 'text' : 'password';
+    });
+  }
 
   if (btnLogin) {
     btnLogin.addEventListener('click', () => {
@@ -42,22 +51,20 @@ export function bindAuth() {
 
       if (!name) { alert('Informe seu nome.'); return; }
 
-      // Regras do Admin fixo
-      if (normalizeName(name) === 'jhonatan reck') {
+      // Somente "Jhonatan reck" pode ser Admin (senha obrigatória)
+      if (norm(name) === 'jhonatan reck') {
         if (pass !== '152205') { alert('Senha inválida para Admin.'); return; }
-        role = 'Admin'; // força Admin
+        role = 'Admin';
       } else {
-        // ninguém além do Jhonatan pode selecionar Admin
+        // impede outros de entrarem como Admin
         if (role === 'Admin') {
           alert('Somente o Admin autorizado pode entrar como Admin.');
           role = 'Operação';
         }
-        // senha não é obrigatória para outras funções (por enquanto)
+        // para Operação/Supervisor a senha pode ficar vazia
       }
 
-      const id   = document.getElementById('loginId').value.trim();
-      const user = { name, id, role, provider: 'local', loggedAt: new Date().toISOString() };
-
+      const user = { name, role, provider: 'local', loggedAt: new Date().toISOString() };
       localStorage.setItem(LS.user, JSON.stringify(user));
       setState({ user });
       showApp(user);
