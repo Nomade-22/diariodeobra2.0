@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Controle de Equipes & Ferramentas</title>
-  <link rel="stylesheet" href="style.css?v=6">
-  <link rel="manifest" href="manifest.json?v=6">
+  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="manifest" href="manifest.json?v=8">
   <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
@@ -17,7 +17,7 @@
       <div class="row onecol">
         <div>
           <label>Nome completo</label>
-          <input id="loginName" placeholder="Ex.: Maria Souza" />
+          <input id="loginName" placeholder="Ex.: Jhonatan" />
         </div>
         <div>
           <label>Senha</label>
@@ -44,8 +44,7 @@
           <div>
             <div id="userName" class="small">Usuário</div>
             <div class="small">
-              <span id="userRole">Operação</span> —
-              <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a>
+              <span id="userRole">Operação</span> — <a href="#" id="btnLogout" style="color:#9fb3d9">Sair</a>
             </div>
           </div>
           <div class="toolsBar">
@@ -210,9 +209,10 @@
 
   <div id="diag" class="chip">carregando…</div>
 
-  <!-- Scripts principais -->
-  <script type="module" src="main.js?v=6"></script>
-  <!-- Integração Google (escuta botões e envia ao Apps Script) -->
-  <script type="module" src="gas_bind.js?v=6"></script>
+  <!-- Scripts -->
+  <script type="module" src="main.js?v=8"></script>
+  <!-- (GAS desligado por enquanto)
+  <script type="module" src="gas_bind.js?v=8"></script>
+  -->
 </body>
 </html>
