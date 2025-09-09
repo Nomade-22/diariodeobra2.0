@@ -1,17 +1,87 @@
-// auth.js — usa state.js (LS, users, setState)
-// Login por primeiro nome (normalizado) OU por campo `login` se existir.
+// auth.js — login seguro + permissões (compatível com state.js)
+import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
-import { LS, users, setState } from './state.js';
-
+/* ========= Utils ========= */
 const norm = (s)=> (s||'')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .trim().toLowerCase();
 
+const FIRST = (s)=> (String(s||'').trim().split(/\s+/)[0]||'');
+
+/* ========= Base de usuários ========= */
+// Guardamos numa chave própria, mas continuamos aceitando a lista importada do state.js.
+const USERS_KEY = 'mp_users_v1';
+
+const DEFAULT_USERS = [
+  { login: 'jhonatan', name: 'Jhonatan reck', role: 'Admin',      pass: '152205', locked:true },
+  { login: 'emerson',  name: 'Emerson Iuri Rangel Veiga Dias', role: 'Supervisor', pass: '121098' },
+  { login: 'toni',     name: 'Toni Anderson de Souza',          role: 'Supervisor', pass: '041282' },
+];
+
+function seedFromState(list){
+  const arr = Array.isArray(list) ? list : [];
+  // Normaliza: cria login pelo primeiro nome; mantém pass se existir
+  return arr.map(u=>{
+    const login = u.login ? norm(u.login) : norm(FIRST(u.name));
+    return {
+      login,
+      name: u.name || FIRST(u.login||''),
+      role: u.role || 'Operação',
+      pass: u.pass || u.password || '', // se não tiver, fica vazio (não loga)
+    };
+  }).filter(u=>u.login);
+}
+
+function mergeByLogin(a,b){
+  const map = new Map();
+  for(const x of a) map.set(norm(x.login), {...x, login:norm(x.login)});
+  for(const y of b){
+    const k = norm(y.login);
+    map.set(k, { ...(map.get(k)||{}), ...y, login:k });
+  }
+  return Array.from(map.values());
+}
+
+function ensureDefaults(arr){
+  // garante Admin principal SEMPRE
+  if(!arr.find(u=>u.login==='jhonatan')) arr.push(DEFAULT_USERS[0]);
+  // completa emerson/toni se faltarem
+  if(!arr.find(u=>u.login==='emerson'))  arr.push(DEFAULT_USERS[1]);
+  if(!arr.find(u=>u.login==='toni'))     arr.push(DEFAULT_USERS[2]);
+  return arr;
+}
+
+function loadUsers(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(USERS_KEY) || 'null');
+    if(saved && Array.isArray(saved) && saved.length) return ensureDefaults(saved);
+
+    const fromState = seedFromState(USERS_FROM_STATE);
+    const merged = ensureDefaults(mergeByLogin(DEFAULT_USERS, fromState));
+    localStorage.setItem(USERS_KEY, JSON.stringify(merged));
+    return merged;
+  }catch{
+    localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+    return DEFAULT_USERS.slice();
+  }
+}
+
+function saveUsers(list){
+  localStorage.setItem(USERS_KEY, JSON.stringify(list||[]));
+}
+
+/* ========= Sessão ========= */
 export function currentUser() {
   try { return JSON.parse(localStorage.getItem(LS.user) || 'null'); }
   catch { return null; }
 }
 
+function setSession(u){
+  if(u) localStorage.setItem(LS.user, JSON.stringify(u));
+  else localStorage.removeItem(LS.user);
+}
+
+/* ========= UI ========= */
 export function showLogin() {
   document.getElementById('view-login')?.classList.remove('hidden');
   document.getElementById('view-app')?.classList.add('hidden');
@@ -21,12 +91,10 @@ export function showApp(u) {
   document.getElementById('view-login')?.classList.add('hidden');
   document.getElementById('view-app')?.classList.remove('hidden');
 
-  // Header
   document.getElementById('userName').textContent = u.name || 'Usuário';
   document.getElementById('userRole').textContent = u.role || 'Operação';
   document.getElementById('avatar').textContent = (u.name||'U').slice(0,1).toUpperCase();
 
-  // Permissões
   const isAdmin = u.role === 'Admin';
   const cadBtn = document.getElementById('tabCadButton');
   const cadSec = document.getElementById('tab-cadastros');
@@ -48,18 +116,43 @@ export function showApp(u) {
   }
 }
 
-// --- busca usuário por primeiro nome (ou campo login), com normalização
+/* ========= Autenticação ========= */
 function findAccountByInput(nameTyped){
-  const first = norm((nameTyped||'').split(/\s+/)[0] || '');
-
-  // percorre a lista users (vinda do state.js)
-  for(const u of (users||[])){
-    const login = u.login ? norm(u.login) : norm((u.name||'').split(/\s+/)[0]||'');
-    if(login === first) return u;
+  const loginTry = norm(FIRST(nameTyped)); // primeiro nome normalizado
+  const list = loadUsers();
+  for(const u of list){
+    const login = norm(u.login || FIRST(u.name));
+    if(login === loginTry) return u;
   }
   return null;
 }
 
+function doLogin(nameTyped, pass) {
+  if(!nameTyped) return { ok:false, msg:'Informe seu nome.' };
+  const acc = findAccountByInput(nameTyped);
+  if(!acc) return { ok:false, msg:'Usuário não encontrado. Peça ao Admin para cadastrar.' };
+  if(!acc.pass) return { ok:false, msg:'Usuário cadastrado sem senha. Peça ao Admin para definir uma senha.' };
+  if(String(pass) !== String(acc.pass)) return { ok:false, msg:'Senha inválida.' };
+
+  const session = {
+    name: acc.name || FIRST(nameTyped),
+    role: acc.role || 'Operação',
+    provider: 'local',
+    loggedAt: new Date().toISOString()
+  };
+  setSession(session);
+  setState({ user: session });
+  return { ok:true, user: session };
+}
+
+function doLogout(){
+  setSession(null);
+  setState({ user: null });
+  showLogin();
+  document.dispatchEvent(new CustomEvent('user:logout'));
+}
+
+/* ========= Bind ========= */
 export function bindAuth() {
   const btnLogin   = document.getElementById('btnLogin');
   const btnLogout  = document.getElementById('btnLogout');
@@ -67,7 +160,7 @@ export function bindAuth() {
   const nameEl     = document.getElementById('loginName');
   const passEl     = document.getElementById('loginPass');
 
-  // 👁️ Mostrar/ocultar senha (bind apenas 1x)
+  // Olhinho
   if(passToggle && !passToggle.dataset.bound){
     passToggle.dataset.bound = '1';
     passToggle.addEventListener('click', ()=>{
@@ -82,29 +175,10 @@ export function bindAuth() {
     btnLogin.dataset.bound = '1';
     btnLogin.addEventListener('click', (e) => {
       e.preventDefault();
-      const nameTyped = (nameEl?.value || '').trim();
-      const pass      = passEl?.value || '';
-
-      if (!nameTyped) { alert('Informe seu nome.'); return; }
-
-      const acc = findAccountByInput(nameTyped);
-      if(!acc){ alert('Usuário não encontrado. Peça ao Admin para cadastrar.'); return; }
-
-      // valida a senha exatamente
-      if(String(pass) !== String(acc.pass)){ alert('Senha inválida.'); return; }
-
-      // monta sessão (mantém nome completo se existir)
-      const session = {
-        name: acc.name || nameTyped.split(/\s+/)[0],
-        role: acc.role || 'Operação',
-        provider: 'local',
-        loggedAt: new Date().toISOString()
-      };
-
-      localStorage.setItem(LS.user, JSON.stringify(session));
-      setState({ user: session });
-      showApp(session);
-      document.dispatchEvent(new CustomEvent('user:login', { detail: session }));
+      const res = doLogin(nameEl?.value||'', passEl?.value||'');
+      if(!res.ok){ alert(res.msg); return; }
+      showApp(res.user);
+      document.dispatchEvent(new CustomEvent('user:login', { detail: res.user }));
     });
   }
 
@@ -113,13 +187,34 @@ export function bindAuth() {
     btnLogout.dataset.bound = '1';
     btnLogout.addEventListener('click', (e) => {
       e.preventDefault();
-      localStorage.removeItem(LS.user);
-      setState({ user: null });
-      showLogin();
-      document.dispatchEvent(new CustomEvent('user:logout'));
-      // limpa campos
+      doLogout();
       if(nameEl) nameEl.value = '';
-      if(passEl) { passEl.value = ''; passEl.type = 'password'; passToggle && (passToggle.textContent='👁️'); }
+      if(passEl){ passEl.value=''; passEl.type='password'; passToggle && (passToggle.textContent='👁️'); }
     });
   }
+}
+
+/* ========= (opcional) helpers para tela de Usuários ========= */
+export function listUsers(){ return loadUsers(); }
+export function upsertUser(u){
+  const list = loadUsers();
+  const k = norm(u.login || FIRST(u.name));
+  if(!k) return false;
+  const idx = list.findIndex(x=>norm(x.login)===k);
+  const item = {
+    login: k,
+    name: u.name || FIRST(u.login),
+    role: u.role || 'Operação',
+    pass: u.pass || ''
+  };
+  if(idx>=0) list[idx]=item; else list.push(item);
+  saveUsers(ensureDefaults(list));
+  return true;
+}
+export function removeUser(login){
+  const k = norm(login);
+  if(k==='jhonatan') return false; // não remove o Admin principal
+  const list = loadUsers().filter(x=>norm(x.login)!==k);
+  saveUsers(ensureDefaults(list));
+  return true;
 }
