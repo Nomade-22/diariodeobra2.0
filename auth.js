@@ -1,11 +1,9 @@
 // auth.js — login seguro + permissões (compatível com state.js)
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
-/* ========= Utils ========= */
 const norm = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 const FIRST = (s)=> (String(s||'').trim().split(/\s+/)[0]||'');
 
-/* ========= Base de usuários ========= */
 const USERS_KEY = 'mp_users_v1';
 const DEFAULT_USERS = [
   { login: 'jhonatan', name: 'Jhonatan reck', role: 'Admin',      pass: '152205', locked:true },
@@ -50,14 +48,12 @@ function loadUsers(){
 }
 function saveUsers(list){ localStorage.setItem(USERS_KEY, JSON.stringify(list||[])); }
 
-/* ========= Sessão ========= */
 export function currentUser() {
   try { return JSON.parse(localStorage.getItem(LS.user) || 'null'); }
   catch { return null; }
 }
 function setSession(u){ if(u) localStorage.setItem(LS.user, JSON.stringify(u)); else localStorage.removeItem(LS.user); }
 
-/* ========= UI ========= */
 export function showLogin() {
   document.getElementById('view-login')?.classList.remove('hidden');
   document.getElementById('view-app')?.classList.add('hidden');
@@ -89,7 +85,6 @@ export function showApp(u) {
   }
 }
 
-/* ========= Autenticação ========= */
 function findAccountByInput(nameTyped){
   const loginTry = norm(FIRST(nameTyped));
   const list = loadUsers();
@@ -115,7 +110,6 @@ function doLogout(){
   document.dispatchEvent(new CustomEvent('user:logout'));
 }
 
-/* ========= Bind RESILIENTE ========= */
 export function bindAuth() {
   const start = Date.now();
   const MAX_MS = 8000;
@@ -127,7 +121,6 @@ export function bindAuth() {
     const nameEl     = document.getElementById('loginName');
     const passEl     = document.getElementById('loginPass');
 
-    // 👁️ Olhinho
     if(passToggle && !passToggle.dataset.bound){
       passToggle.dataset.bound = '1';
       passToggle.addEventListener('click', ()=>{
@@ -137,7 +130,6 @@ export function bindAuth() {
       });
     }
 
-    // Entrar
     if(btnLogin && !btnLogin.dataset.bound){
       btnLogin.dataset.bound = '1';
       btnLogin.addEventListener('click', (e) => {
@@ -149,7 +141,6 @@ export function bindAuth() {
       });
     }
 
-    // Sair
     if(btnLogout && !btnLogout.dataset.bound){
       btnLogout.dataset.bound = '1';
       btnLogout.addEventListener('click', (e) => {
@@ -167,7 +158,7 @@ export function bindAuth() {
   }, 150);
 }
 
-/* ========= Helpers (opcionais) ========= */
+// helpers opcionais p/ tela de usuários
 export function listUsers(){ return loadUsers(); }
 export function upsertUser(u){
   const list = loadUsers();
