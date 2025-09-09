@@ -1,4 +1,4 @@
-// main.js — inicialização da UI e binds principais
+// main.js — inicialização em modo seguro (sem GAS agora)
 
 import { setupTabs } from './tabs.js';
 import { LS, write } from './state.js';
@@ -10,19 +10,28 @@ import { renderReturnList } from './render_return.js';
 import { refreshOpenOuts } from './openouts.js';
 import { bindExports } from './exports_bind.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
-import { renderFinance, bindFinanceTop } from './finance.js';
-import { renderUsers, bindUserTop } from './ui_users.js';
-import { retryQueue } from './gas.js';
+// import { renderFinance, bindFinanceTop } from './finance.js';
+// import { renderUsers, bindUserTop } from './ui_users.js';
+// import { retryQueue } from './gas.js';
 
 const chip = document.getElementById('diag');
 const say  = (t)=> chip && (chip.textContent = t);
 
-// Mostra erro no chip se algo quebrar
 window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecido')));
 
-async function registerSW(){
-  try{ if('serviceWorker' in navigator){ await navigator.serviceWorker.register('./sw.js?v=6'); } }catch(e){}
-}
+// derruba SWs antigos e caches no primeiro load
+(async ()=>{
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+      const keys = await caches.keys();
+      for (const k of keys) await caches.delete(k);
+      // registra o novo SW
+      await navigator.serviceWorker.register('./sw.js?v=8');
+    } catch(e){}
+  }
+})();
 
 function initAppUI(){
   setupTabs();
@@ -48,8 +57,8 @@ function initAppUI(){
 
   renderEmployeesChoice(ctx);
   renderTools(()=>ctx.renderPicker());
-  renderTeams(refreshAll);
-  renderJobs(refreshAll);
+  renderTeams(()=>{});
+  renderJobs(()=>{});
   ctx.renderPicker();
   refreshOpenOuts();
 
@@ -57,76 +66,21 @@ function initAppUI(){
   bindCheckout(ctx);
   bindReturn(ctx);
 
-  const isAdmin = ()=> user && user.role === 'Admin';
-  if(isAdmin()){
-    bindFinanceTop(); renderFinance();
-    bindUserTop();    renderUsers();
-  }
-
-  function refreshAll(){
-    fillSelect(document.getElementById('outJobsite'), jobs);
-    renderTools(()=>ctx.renderPicker());
-    renderTeams(refreshAll);
-    renderJobs(refreshAll);
-    renderEmployeesChoice(ctx);
-    ctx.renderPicker();
-    if(isAdmin()){
-      bindFinanceTop(); renderFinance();
-      renderUsers();
-    }
-  }
-
-  // Botões "Adicionar"
-  const guardBind = (id, fn)=>{
-    const el = document.getElementById(id);
-    if(!el || el.dataset.bound) return;
-    el.dataset.bound = '1';
-    el.addEventListener('click', fn);
-  };
-
-  guardBind('toolAdd', ()=>{
-    if(!(user && user.role === 'Admin')) return alert('Somente Admin pode cadastrar.');
-    tools.push({ name:'', code:'', qty:1, obs:'' });
-    write(LS.tools, tools);
-    const tcount = document.getElementById('toolsCount');
-    if(tcount) tcount.textContent = `${tools.length} itens`;
-    renderTools(()=>ctx.renderPicker());
-    ctx.renderPicker();
-  });
-
-  guardBind('teamAdd', ()=>{
-    if(!(user && user.role === 'Admin')) return alert('Somente Admin pode cadastrar.');
-    const val = (document.getElementById('teamNew').value||'').trim();
-    if(!val) return;
-    teams.push(val);
-    write(LS.teams, teams);
-    document.getElementById('teamNew').value='';
-    renderTeams(()=>{});
-    renderEmployeesChoice(ctx);
-  });
-
-  guardBind('jobAdd', ()=>{
-    if(!(user && user.role === 'Admin')) return alert('Somente Admin pode cadastrar.');
-    const val = (document.getElementById('jobNew').value||'').trim();
-    if(!val) return;
-    jobs.push(val);
-    write(LS.jobs, jobs);
-    document.getElementById('jobNew').value='';
-    renderJobs(()=>{});
-    fillSelect(document.getElementById('outJobsite'), jobs);
-    bindFinanceTop();
-  });
+  // Se quiser reativar Financeiro/Usuários depois:
+  // const isAdmin = ()=> user && user.role === 'Admin';
+  // if(isAdmin()){
+  //   bindFinanceTop(); renderFinance();
+  //   bindUserTop();    renderUsers();
+  // }
 }
 
 function init(){
   say('iniciando…');
-  registerSW();
-  bindAuth();              // liga login/olhinho (resiliente no auth.js)
-  retryQueue();            // tenta enviar fila offline
+  bindAuth();              // login + olhinho
   const u = currentUser(); // restaura sessão
   if(u){ showApp(u); initAppUI(); }
   else { showLogin(); }
-  document.addEventListener('user:login', ()=>{ initAppUI(); retryQueue(); });
+  document.addEventListener('user:login', ()=>{ initAppUI(); });
   say('pronto');
 }
 
