@@ -1,4 +1,4 @@
-// auth.js — v11: login robusto + olhinho + permissões
+// auth.js — login e permissões (sem SW/GAS)
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
 const norm  = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -6,16 +6,16 @@ const FIRST = (s)=> (String(s||'').trim().split(/\s+/)[0]||'');
 
 const USERS_KEY = 'mp_users_v1';
 const DEFAULT_USERS = [
-  { login: 'jhonatan', name: 'Jhonatan reck', role: 'Admin',      pass: '152205' },
-  { login: 'emerson',  name: 'Emerson Iuri Rangel Veiga Dias', role: 'Supervisor', pass: '121098' },
-  { login: 'toni',     name: 'Toni Anderson de Souza',          role: 'Supervisor', pass: '041282' },
+  { login:'jhonatan', name:'Jhonatan reck', role:'Admin', pass:'152205' },
+  { login:'emerson',  name:'Emerson Iuri Rangel Veiga Dias', role:'Supervisor', pass:'121098' },
+  { login:'toni',     name:'Toni Anderson de Souza', role:'Supervisor', pass:'041282' },
 ];
 
 function seedFromState(list){
   const arr = Array.isArray(list)? list : [];
   return arr.map(u=>{
     const login = u.login ? norm(u.login) : norm(FIRST(u.name));
-    return { login, name: u.name || FIRST(u.login||''), role: u.role || 'Operação', pass: u.pass || '' };
+    return { login, name:u.name || FIRST(u.login||''), role:u.role || 'Operação', pass:u.pass || '' };
   }).filter(u=>u.login);
 }
 function mergeByLogin(a,b){
@@ -69,17 +69,13 @@ export function showApp(u){
   const cadSec = document.getElementById('tab-cadastros');
   const finBtn = document.getElementById('tabFinButton');
   const finSec = document.getElementById('tab-finance');
-  const btnExportPDF = document.getElementById('btnExportPDF');
-  const btnExportXLS = document.getElementById('btnExportXLS');
 
   if(!isAdmin){
     cadBtn?.classList.add('hidden'); cadSec?.classList.add('hidden');
     finBtn?.classList.add('hidden'); finSec?.classList.add('hidden');
-    btnExportPDF?.classList.add('hidden'); btnExportXLS?.classList.add('hidden');
   }else{
     cadBtn?.classList.remove('hidden'); cadSec?.classList.remove('hidden');
     finBtn?.classList.remove('hidden'); finSec?.classList.remove('hidden');
-    btnExportPDF?.classList.remove('hidden'); btnExportXLS?.classList.remove('hidden');
   }
 }
 
@@ -109,45 +105,30 @@ function doLogout(){
 }
 
 export function bindAuth(){
-  const start = Date.now();
-  const MAX_MS = 8000;
+  const passToggle = document.getElementById('passToggle');
+  const btnLogin   = document.getElementById('btnLogin');
+  const btnLogout  = document.getElementById('btnLogout');
+  const nameEl     = document.getElementById('loginName');
+  const passEl     = document.getElementById('loginPass');
 
-  const timer = setInterval(()=>{
-    const btnLogin   = document.getElementById('btnLogin');
-    const btnLogout  = document.getElementById('btnLogout');
-    const passToggle = document.getElementById('passToggle');
-    const nameEl     = document.getElementById('loginName');
-    const passEl     = document.getElementById('loginPass');
+  passToggle?.addEventListener('click', ()=>{
+    if(!passEl) return;
+    passEl.type = (passEl.type === 'password') ? 'text' : 'password';
+    passToggle.textContent = (passEl.type === 'password') ? '👁️' : '🙈';
+  });
 
-    if(passToggle && !passToggle.dataset.bound){
-      passToggle.dataset.bound='1';
-      passToggle.addEventListener('click', ()=>{
-        if(!passEl) return;
-        passEl.type = (passEl.type === 'password') ? 'text' : 'password';
-        passToggle.textContent = (passEl.type === 'password') ? '👁️' : '🙈';
-      });
-    }
-    if(btnLogin && !btnLogin.dataset.bound){
-      btnLogin.dataset.bound='1';
-      btnLogin.addEventListener('click', (e)=>{
-        e.preventDefault();
-        const res = doLogin(nameEl?.value||'', passEl?.value||'');
-        if(!res.ok){ alert(res.msg); return; }
-        showApp(res.user);
-        document.dispatchEvent(new CustomEvent('user:login', { detail: res.user }));
-      });
-    }
-    if(btnLogout && !btnLogout.dataset.bound){
-      btnLogout.dataset.bound='1';
-      btnLogout.addEventListener('click', (e)=>{
-        e.preventDefault();
-        doLogout();
-        if(nameEl) nameEl.value = '';
-        if(passEl){ passEl.value=''; passEl.type='password'; passToggle && (passToggle.textContent = '👁️'); }
-      });
-    }
+  btnLogin?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const res = doLogin(nameEl?.value||'', passEl?.value||'');
+    if(!res.ok){ alert(res.msg); return; }
+    showApp(res.user);
+    document.dispatchEvent(new CustomEvent('user:login', { detail: res.user }));
+  });
 
-    const ok = btnLogin?.dataset.bound && passToggle?.dataset.bound;
-    if(ok || (Date.now()-start)>MAX_MS){ clearInterval(timer); }
-  }, 150);
+  btnLogout?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    doLogout();
+    if(nameEl) nameEl.value = '';
+    if(passEl){ passEl.value=''; passEl.type='password'; passToggle && (passToggle.textContent='👁️'); }
+  });
 }
