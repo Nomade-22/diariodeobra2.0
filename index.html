@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Controle de Equipes & Ferramentas</title>
-  <link rel="stylesheet" href="style.css?v=10">
-  <link rel="manifest" href="manifest.json?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="manifest" href="manifest.json?v=11">
   <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
@@ -209,14 +209,14 @@
 
   <div id="diag" class="chip">carregando…</div>
 
-  <!-- Boot: limpa SW/cache e só depois carrega módulos v=10 -->
+  <!-- Loader resiliente: limpa SW/cache, testa main.js e então carrega -->
   <script>
   (async () => {
-    try {
-      const chip = document.getElementById('diag');
-      const say = (t)=> chip && (chip.textContent = t);
-      say('limpando…');
+    const chip = document.getElementById('diag');
+    const say  = (t)=> chip && (chip.textContent = t);
 
+    try {
+      say('limpando cache…');
       if ('serviceWorker' in navigator) {
         try {
           const regs = await navigator.serviceWorker.getRegistrations();
@@ -226,15 +226,22 @@
         } catch(e){}
       }
 
-      // carrega os módulos FRESCOS (v=10)
+      say('verificando main.js…');
+      // Confere se main.js existe MESMO (evita ficar preso em "carregando módulos")
+      const resp = await fetch('main.js?v=11', { cache: 'no-store' });
+      if (!resp.ok) {
+        say('Erro: main.js não encontrado (' + resp.status + ')');
+        return;
+      }
+
+      say('carregando módulos…');
       const s = document.createElement('script');
       s.type = 'module';
-      s.src  = 'main.js?v=10';
+      s.src  = 'main.js?v=11';
+      s.onerror = () => { say('Erro: falha ao carregar main.js'); };
       document.body.appendChild(s);
-      say('carregando módulos…');
     } catch (err) {
-      const chip = document.getElementById('diag');
-      chip.textContent = 'Falha boot: ' + (err && err.message);
+      say('Falha boot: ' + (err && err.message));
     }
   })();
   </script>
