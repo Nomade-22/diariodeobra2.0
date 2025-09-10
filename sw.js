@@ -1,5 +1,5 @@
 // sw.js — cache versionado + network-first para JS/HTML
-const CACHE = 'mp-cache-v9';
+const CACHE = 'mp-cache-v10';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -7,22 +7,22 @@ self.addEventListener('install', (e) => {
     caches.open(CACHE).then((cache) =>
       cache.addAll([
         './',
-        './index.html?v=9',
-        './style.css?v=9',
-        './manifest.json?v=9',
-        './main.js?v=9',
-        './auth.js?v=9',
-        './state.js?v=9',
-        './ui.js?v=9',
-        './tabs.js?v=9',
-        './checkout.js?v=9',
-        './returns.js?v=9',
-        './render_return.js?v=9',
-        './openouts.js?v=9',
-        './exports.js?v=9',
-        './exports_bind.js?v=9',
-        './finance.js?v=9',
-        './ui_users.js?v=9'
+        './index.html?v=10',
+        './style.css?v=10',
+        './manifest.json?v=10',
+        './main.js?v=10',
+        './auth.js?v=10',
+        './state.js?v=10',
+        './ui.js?v=10',
+        './tabs.js?v=10',
+        './checkout.js?v=10',
+        './returns.js?v=10',
+        './render_return.js?v=10',
+        './openouts.js?v=10',
+        './exports.js?v=10',
+        './exports_bind.js?v=10',
+        './finance.js?v=10',
+        './ui_users.js?v=10'
       ])
     )
   );
