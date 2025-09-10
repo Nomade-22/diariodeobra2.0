@@ -1,36 +1,35 @@
-// main.js — inicialização mínima segura (login e chip de erros)
+// main.js — v11: inicialização mínima + diagnóstico no chip
 
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
-// Se quiser reativar todo o app depois, reimporte seus módulos aqui:
-// import { setupTabs } from './tabs.js';
-// import { ... } from './ui.js';
 
 const chip = document.getElementById('diag');
 const say  = (t)=> chip && (chip.textContent = t);
 
-// mostra erros no chip (útil no celular)
 window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecido')));
 
 async function registerSW(){
+  // opcional: registre o SW v=11 (só se quiser PWA agora)
   try{
     if('serviceWorker' in navigator){
-      // registre o SW v=10 (opcional; comente se não quiser PWA agora)
-      await navigator.serviceWorker.register('./sw.js?v=10');
+      await navigator.serviceWorker.register('./sw.js?v=11');
     }
   }catch(e){}
 }
 
 function init(){
   say('iniciando…');
+
+  // Liga autenticação (botão Entrar + olhinho)
   bindAuth();
 
+  // Restaura sessão, se existir
   const u = currentUser();
-  if(u){ showApp(u); /* aqui você chama setupTabs() e demais renders */ }
+  if(u){ showApp(u); }
   else { showLogin(); }
 
   document.addEventListener('user:login', ()=>{
-    // Aqui você pode inicializar o resto do app (abas, cadastros etc.)
-    // setupTabs(); ...
+    // Aqui você inicia o restante do app (abas, cadastros, etc) quando quiser
+    // Ex: setupTabs(); renderizações...
   });
 
   registerSW(); // opcional
