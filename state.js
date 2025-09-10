@@ -1,40 +1,37 @@
+// state.js — estado básico + usuários padrão
+
 export const LS = {
+  user:  'mp_user',
   tools: 'mp_tools',
   teams: 'mp_teams',
   jobs:  'mp_jobs',
-  outs:  'mp_outs',
-  rets:  'mp_rets',
-  user:  'mp_user',
-  contracts: 'mp_contracts',
-  users: 'mp_users' // ⇐ NOVO
 };
 
-function read(k, def){ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } }
-export function write(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+export let user = null;
 
-/* seed inicial de usuários */
-const seedUsers = [
-  { id:'u1', name:'Jhonatan',  role:'Admin',      pass:'152205' },
-  { id:'u2', name:'Emerson',   role:'Supervisor', pass:'121098' },
-  { id:'u3', name:'Toni',      role:'Supervisor', pass:'041282' },
-];
-
-export let tools = read(LS.tools, []);
-export let teams = read(LS.teams, []);
-export let jobs  = read(LS.jobs,  []);
-export let outs  = read(LS.outs,  []);
-export let rets  = read(LS.rets,  []);
-export let user  = read(LS.user,  null);
-export let contracts = read(LS.contracts, []);
-export let users = read(LS.users, seedUsers);
-
-export function setState(part){
-  if(part.tools){ tools = part.tools; write(LS.tools, tools); }
-  if(part.teams){ teams = part.teams; write(LS.teams, teams); }
-  if(part.jobs ){ jobs  = part.jobs;  write(LS.jobs,  jobs ); }
-  if(part.outs ){ outs  = part.outs;  write(LS.outs,  outs ); }
-  if(part.rets ){ rets  = part.rets;  write(LS.rets,  rets ); }
-  if(part.user ){ user  = part.user;  write(LS.user,  user ); }
-  if(part.contracts){ contracts = part.contracts; write(LS.contracts, contracts); }
-  if(part.users){ users = part.users; write(LS.users, users); }
+// carrega listas do localStorage (ou vazio)
+function load(key, def){
+  try{
+    const v = JSON.parse(localStorage.getItem(key) || 'null');
+    return Array.isArray(def) ? (Array.isArray(v) ? v : def) : (v ?? def);
+  }catch{ return def; }
 }
+
+export let tools = load(LS.tools, []);  // [{name, code, qty, obs}]
+export let teams = load(LS.teams, []);  // ['nome1', 'nome2']
+export let jobs  = load(LS.jobs,  []);  // ['obra1', 'obra2']
+
+export function write(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+export function setState(partial){
+  if(partial.hasOwnProperty('user')) user = partial.user;
+}
+
+// ===== Usuários do sistema (para auth.js sem depender de outra tela) =====
+export const users = [
+  { login: 'jhonatan', name: 'Jhonatan reck', role: 'Admin',      pass: '152205' },
+  { login: 'emerson',  name: 'Emerson Iuri Rangel Veiga Dias', role: 'Supervisor', pass: '121098' },
+  { login: 'toni',     name: 'Toni Anderson de Souza',          role: 'Supervisor', pass: '041282' }
+];
