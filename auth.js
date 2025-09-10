@@ -1,4 +1,4 @@
-// auth.js — login seguro + permissões (usa state.js)
+// auth.js — v11: login robusto + olhinho + permissões
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
 const norm  = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
