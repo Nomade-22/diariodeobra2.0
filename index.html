@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Controle de Equipes & Ferramentas</title>
-  <link rel="stylesheet" href="style.css?v=9">
-  <link rel="manifest" href="manifest.json?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="manifest" href="manifest.json?v=10">
   <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
@@ -209,8 +209,34 @@
 
   <div id="diag" class="chip">carregando…</div>
 
-  <!-- Scripts -->
-  <script type="module" src="main.js?v=9"></script>
-  <!-- <script type="module" src="gas_bind.js?v=9"></script> -->
+  <!-- Boot: limpa SW/cache e só depois carrega módulos v=10 -->
+  <script>
+  (async () => {
+    try {
+      const chip = document.getElementById('diag');
+      const say = (t)=> chip && (chip.textContent = t);
+      say('limpando…');
+
+      if ('serviceWorker' in navigator) {
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) await r.unregister();
+          const keys = await caches.keys();
+          for (const k of keys) await caches.delete(k);
+        } catch(e){}
+      }
+
+      // carrega os módulos FRESCOS (v=10)
+      const s = document.createElement('script');
+      s.type = 'module';
+      s.src  = 'main.js?v=10';
+      document.body.appendChild(s);
+      say('carregando módulos…');
+    } catch (err) {
+      const chip = document.getElementById('diag');
+      chip.textContent = 'Falha boot: ' + (err && err.message);
+    }
+  })();
+  </script>
 </body>
 </html>
