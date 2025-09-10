@@ -9,7 +9,6 @@ export const LS = {
 
 export let user = null;
 
-// carrega listas do localStorage (ou vazio)
 function load(key, def){
   try{
     const v = JSON.parse(localStorage.getItem(key) || 'null');
@@ -17,21 +16,21 @@ function load(key, def){
   }catch{ return def; }
 }
 
-export let tools = load(LS.tools, []);  // [{name, code, qty, obs}]
-export let teams = load(LS.teams, []);  // ['nome1', 'nome2']
-export let jobs  = load(LS.jobs,  []);  // ['obra1', 'obra2']
+export let tools = load(LS.tools, []);
+export let teams = load(LS.teams, []);
+export let jobs  = load(LS.jobs,  []);
 
 export function write(key, val){
   localStorage.setItem(key, JSON.stringify(val));
 }
 
 export function setState(partial){
-  if(partial.hasOwnProperty('user')) user = partial.user;
+  if(Object.prototype.hasOwnProperty.call(partial,'user')) user = partial.user;
 }
 
-// ===== Usuários do sistema (para auth.js sem depender de outra tela) =====
+// Usuários do sistema (para o auth.js)
 export const users = [
-  { login: 'jhonatan', name: 'Jhonatan reck', role: 'Admin',      pass: '152205' },
-  { login: 'emerson',  name: 'Emerson Iuri Rangel Veiga Dias', role: 'Supervisor', pass: '121098' },
-  { login: 'toni',     name: 'Toni Anderson de Souza',          role: 'Supervisor', pass: '041282' }
+  { login:'jhonatan', name:'Jhonatan reck', role:'Admin',      pass:'152205' },
+  { login:'emerson',  name:'Emerson Iuri Rangel Veiga Dias', role:'Supervisor', pass:'121098' },
+  { login:'toni',     name:'Toni Anderson de Souza',          role:'Supervisor', pass:'041282' },
 ];
