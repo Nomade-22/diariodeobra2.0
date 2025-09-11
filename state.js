@@ -1,4 +1,4 @@
-// state.js — estado básico + usuários padrão
+// state.js — v8r: estado simples + usuários padrão
 
 export const LS = {
   user:  'mp_user',
@@ -16,9 +16,9 @@ function load(key, def){
   }catch{ return def; }
 }
 
-export let tools = load(LS.tools, []);
-export let teams = load(LS.teams, []);
-export let jobs  = load(LS.jobs,  []);
+export let tools = load(LS.tools, []); // [{name, code, qty, obs}]
+export let teams = load(LS.teams, []); // ['nome1', ...]
+export let jobs  = load(LS.jobs,  []); // ['obra1', ...]
 
 export function write(key, val){
   localStorage.setItem(key, JSON.stringify(val));
@@ -28,7 +28,7 @@ export function setState(partial){
   if(Object.prototype.hasOwnProperty.call(partial,'user')) user = partial.user;
 }
 
-// Usuários do sistema (para o auth.js)
+// Usuários (login pelo primeiro nome)
 export const users = [
   { login:'jhonatan', name:'Jhonatan reck', role:'Admin',      pass:'152205' },
   { login:'emerson',  name:'Emerson Iuri Rangel Veiga Dias', role:'Supervisor', pass:'121098' },
