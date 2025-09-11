@@ -1,4 +1,4 @@
-// auth.js — login e permissões (sem SW/GAS)
+// auth.js — v8r: login + permissões
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
 const norm  = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -69,13 +69,17 @@ export function showApp(u){
   const cadSec = document.getElementById('tab-cadastros');
   const finBtn = document.getElementById('tabFinButton');
   const finSec = document.getElementById('tab-finance');
+  const btnExportPDF = document.getElementById('btnExportPDF');
+  const btnExportXLS = document.getElementById('btnExportXLS');
 
   if(!isAdmin){
     cadBtn?.classList.add('hidden'); cadSec?.classList.add('hidden');
     finBtn?.classList.add('hidden'); finSec?.classList.add('hidden');
+    btnExportPDF?.classList.add('hidden'); btnExportXLS?.classList.add('hidden');
   }else{
     cadBtn?.classList.remove('hidden'); cadSec?.classList.remove('hidden');
     finBtn?.classList.remove('hidden'); finSec?.classList.remove('hidden');
+    btnExportPDF?.classList.remove('hidden'); btnExportXLS?.classList.remove('hidden');
   }
 }
 
