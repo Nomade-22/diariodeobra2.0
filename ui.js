@@ -1,9 +1,9 @@
-// ui.js — render essencial (cadastros + picker)
+// ui.js — v8r: render essencial (cadastros + picker)
 
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 
-export const byId = (id)=> document.getElementById(id);
+const byId = (id)=> document.getElementById(id);
 
 export function fillSelect(sel, arr){
   if(!sel) return;
@@ -40,7 +40,7 @@ export function renderTools(onChange){
     list.appendChild(row);
   });
 
-  // Delegação de eventos (funciona após re-render)
+  // Delegação (uma vez só)
   if(!list.dataset.bound){
     list.dataset.bound='1';
     list.addEventListener('click', (e)=>{
@@ -154,7 +154,6 @@ export function renderPicker(state){
       <div>${t.code||''}</div>
       <div>${t.qty??0}</div>
       <div><input class="pk-take" type="number" min="0" value="${take}" data-id="${id}"></div>
-      <div></div>
     `;
     box.appendChild(row);
     if(checked) totalSel++;
@@ -186,16 +185,10 @@ export function renderPicker(state){
   };
 }
 
-/* Funcionários (checkboxes) */
+/* Funcionários (checkboxes para Saída) */
 export function renderEmployeesChoice(ctx){
   const box = byId('outEmployees'); if(!box) return;
   box.innerHTML = '';
-  (ctx.teamsOverride || window.teams || []).concat().length; // noop
-  // usa a lista oficial
-  (window._teamsMirror || []).length; // noop
-  (window._unused || 0); // noop
-
-  // teams vem do state.js
   teams.forEach((n,i)=>{
     const id = `emp_${i}`;
     const row = document.createElement('label');
@@ -203,7 +196,6 @@ export function renderEmployeesChoice(ctx){
     row.innerHTML = `<input type="checkbox" class="emp-check" id="${id}" data-name="${n}"><span>${n}</span>`;
     box.appendChild(row);
   });
-
   box.addEventListener('change', (e)=>{
     const chk = e.target.closest?.('.emp-check'); if(!chk) return;
     const nm = chk.dataset.name;
