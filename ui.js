@@ -1,5 +1,4 @@
-// ui.js — v8r: render essencial (cadastros + picker)
-
+// ui.js — v3.0.1
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 
@@ -14,7 +13,7 @@ export function fillSelect(sel, arr){
   });
 }
 
-/* Ferramentas (catálogo) */
+/* --------- FERRAMENTAS (CATÁLOGO) --------- */
 export function renderTools(onChange){
   const list  = byId('toolsList');
   const count = byId('toolsCount');
@@ -33,26 +32,26 @@ export function renderTools(onChange){
       <div><input class="t-qty"  type="number" min="0" value="${t.qty??1}" /></div>
       <div><input class="t-obs"  value="${t.obs||''}" placeholder="Observações" /></div>
       <div class="actions">
-        <button class="btn xs act-save">Salvar</button>
-        <button class="btn xs act-del">Excluir</button>
+        <button class="btn xs act-save"><span>Salvar</span></button>
+        <button class="btn xs act-del"><span>Excluir</span></button>
       </div>
     `;
     list.appendChild(row);
   });
 
-  // Delegação (uma vez só)
+  // DELEGAÇÃO: usa closest() (corrige toque no <span> dentro do botão)
   if(!list.dataset.bound){
     list.dataset.bound='1';
     list.addEventListener('click', (e)=>{
       const row = e.target.closest('.rowline'); if(!row) return;
       const idx = Number(row.dataset.index||-1); if(idx<0) return;
 
-      if(e.target.classList.contains('act-del')){
+      if(e.target.closest('.act-del')){
         tools.splice(idx,1); write(LS.tools,tools); renderTools(onChange);
         if(typeof onChange==='function') onChange();
         return;
       }
-      if(e.target.classList.contains('act-save')){
+      if(e.target.closest('.act-save')){
         const name = row.querySelector('.t-name')?.value?.trim()||'';
         const code = row.querySelector('.t-code')?.value?.trim()||'';
         const qty  = Math.max(0, Number(row.querySelector('.t-qty')?.value||0));
@@ -67,7 +66,7 @@ export function renderTools(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* Funcionários */
+/* --------- FUNCIONÁRIOS --------- */
 export function renderTeams(onChange){
   const ul = byId('teamsList'); if(!ul) return;
   ul.innerHTML = '';
@@ -76,8 +75,8 @@ export function renderTeams(onChange){
     li.className = 'rowline'; li.dataset.index = String(i);
     li.innerHTML = `
       <input class="tm-name" value="${name}" />
-      <button class="btn xs act-save-team">Salvar</button>
-      <button class="btn xs act-del-team">Excluir</button>
+      <button class="btn xs act-save-team"><span>Salvar</span></button>
+      <button class="btn xs act-del-team"><span>Excluir</span></button>
     `;
     ul.appendChild(li);
   });
@@ -86,12 +85,12 @@ export function renderTeams(onChange){
     ul.addEventListener('click',(e)=>{
       const li = e.target.closest('li.rowline'); if(!li) return;
       const idx = Number(li.dataset.index||-1); if(idx<0) return;
-      if(e.target.classList.contains('act-del-team')){
+      if(e.target.closest('.act-del-team')){
         teams.splice(idx,1); write(LS.teams,teams); renderTeams(onChange);
         if(typeof onChange==='function') onChange();
         return;
       }
-      if(e.target.classList.contains('act-save-team')){
+      if(e.target.closest('.act-save-team')){
         const name = li.querySelector('.tm-name')?.value?.trim(); if(!name) return;
         teams[idx]=name; write(LS.teams,teams); renderTeams(onChange);
         if(typeof onChange==='function') onChange();
@@ -101,7 +100,7 @@ export function renderTeams(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* Obras/Clientes */
+/* --------- OBRAS/CLIENTES --------- */
 export function renderJobs(onChange){
   const ul = byId('jobsList'); if(!ul) return;
   ul.innerHTML = '';
@@ -110,8 +109,8 @@ export function renderJobs(onChange){
     li.className = 'rowline'; li.dataset.index = String(i);
     li.innerHTML = `
       <input class="jb-name" value="${name}" />
-      <button class="btn xs act-save-job">Salvar</button>
-      <button class="btn xs act-del-job">Excluir</button>
+      <button class="btn xs act-save-job"><span>Salvar</span></button>
+      <button class="btn xs act-del-job"><span>Excluir</span></button>
     `;
     ul.appendChild(li);
   });
@@ -120,12 +119,12 @@ export function renderJobs(onChange){
     ul.addEventListener('click',(e)=>{
       const li = e.target.closest('li.rowline'); if(!li) return;
       const idx = Number(li.dataset.index||-1); if(idx<0) return;
-      if(e.target.classList.contains('act-del-job')){
+      if(e.target.closest('.act-del-job')){
         jobs.splice(idx,1); write(LS.jobs,jobs); renderJobs(onChange);
         if(typeof onChange==='function') onChange();
         return;
       }
-      if(e.target.classList.contains('act-save-job')){
+      if(e.target.closest('.act-save-job')){
         const name = li.querySelector('.jb-name')?.value?.trim(); if(!name) return;
         jobs[idx]=name; write(LS.jobs,jobs); renderJobs(onChange);
         if(typeof onChange==='function') onChange();
@@ -135,7 +134,7 @@ export function renderJobs(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* Picker (Saída) */
+/* --------- PICKER (SAÍDA) — corrige layout no mobile --------- */
 export function renderPicker(state){
   const box = byId('pickList'); const selCount = byId('selCount');
   if(!box) return;
@@ -148,12 +147,16 @@ export function renderPicker(state){
     const checked = take>0;
     const row = document.createElement('div');
     row.className = 'rowline';
+    // grid explícito para alinhar no celular
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = '40px 1.3fr 1fr .7fr 1.1fr';
+    row.style.alignItems = 'center';
     row.innerHTML = `
       <div><input type="checkbox" class="pk-check" ${checked?'checked':''} data-id="${id}"></div>
       <div>${t.name||'-'}</div>
       <div>${t.code||''}</div>
       <div>${t.qty??0}</div>
-      <div><input class="pk-take" type="number" min="0" value="${take}" data-id="${id}"></div>
+      <div><input class="pk-take" type="number" min="0" value="${take}" data-id="${id}" style="width:100%"></div>
     `;
     box.appendChild(row);
     if(checked) totalSel++;
@@ -185,7 +188,7 @@ export function renderPicker(state){
   };
 }
 
-/* Funcionários (checkboxes para Saída) */
+/* --------- CHECKBOXES Funcionários --------- */
 export function renderEmployeesChoice(ctx){
   const box = byId('outEmployees'); if(!box) return;
   box.innerHTML = '';
