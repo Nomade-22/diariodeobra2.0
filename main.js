@@ -1,4 +1,4 @@
-// main.js — v3.0.1
+// main.js — v3.0.2-min: mantém index 3.0; salva saídas; retorno; export CSV
 import { LS, write } from './state.js';
 import { tools, teams, jobs, user } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
@@ -6,13 +6,12 @@ import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderE
 
 const chip = document.getElementById('diag');
 const say  = (t)=> chip && (chip.textContent = t);
-window.addEventListener('error', (e)=> say('Erro: ' + (e.message || 'desconhecido')));
 
 /* armazenamento de saídas/retornos */
 const LS_CHECKS = 'mp_checkouts_v1';
-function loadChecks(){ try{ return JSON.parse(localStorage.getItem(LS_CHECKS)||'[]'); }catch{ return []; } }
-function saveChecks(arr){ localStorage.setItem(LS_CHECKS, JSON.stringify(arr||[])); }
-function openCheckouts(){ return loadChecks().filter(x=>!x.closed); }
+const loadChecks    = ()=> { try{ return JSON.parse(localStorage.getItem(LS_CHECKS)||'[]'); }catch{ return []; } };
+const saveChecks    = (arr)=> localStorage.setItem(LS_CHECKS, JSON.stringify(arr||[]));
+const openCheckouts = ()=> loadChecks().filter(x=>!x.closed);
 
 /* Tabs */
 function setupTabs(){
@@ -49,11 +48,11 @@ function refreshReturnSelect(){
   });
 }
 
+/* Export CSV (abre no Excel) */
 function exportCSV(){
-  // Planilha simples: Saídas (abertas/fechadas)
   const all = loadChecks();
   const rows = [
-    ['id','data_saida','obra','funcionarios','itens(qtd)','status','data_retorno'],
+    ['id','data_saida','obra','funcionarios','itens(qtd)','status','data_retorno','km_retorno','obs'],
     ...all.map(ch=>[
       ch.id,
       ch.timeOut,
@@ -61,7 +60,9 @@ function exportCSV(){
       ch.employees.join('; '),
       ch.items.map(it=>`${it.name}:${it.take}`).join(' | '),
       ch.closed?'Fechado':'Aberto',
-      ch.timeIn || ''
+      ch.timeIn || '',
+      ch.kmIn || '',
+      ch.notes || ''
     ])
   ];
   const csv = rows.map(r=>r.map(v=>{
@@ -99,17 +100,15 @@ function initAppUI(){
   renderJobs(()=>{});
   ctx.renderPicker();
 
-  // Adicionar nos cadastros
-  const guardBind = (id, fn)=>{
+  // binds únicos
+  const once = (id, fn)=>{
     const el = document.getElementById(id);
     if(!el || el.dataset.bound) return;
-    el.dataset.bound = '1';
-    el.addEventListener('click', fn);
+    el.dataset.bound='1'; el.addEventListener('click', fn);
   };
-
   const isAdmin = ()=> user && user.role==='Admin';
 
-  guardBind('toolAdd', ()=>{
+  once('toolAdd', ()=>{
     if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
     tools.push({ name:'', code:'', qty:1, obs:'' });
     write(LS.tools, tools);
@@ -117,7 +116,7 @@ function initAppUI(){
     ctx.renderPicker();
   });
 
-  guardBind('teamAdd', ()=>{
+  once('teamAdd', ()=>{
     if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
     const val = (document.getElementById('teamNew').value||'').trim();
     if(!val) return;
@@ -128,7 +127,7 @@ function initAppUI(){
     renderEmployeesChoice(ctx);
   });
 
-  guardBind('jobAdd', ()=>{
+  once('jobAdd', ()=>{
     if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
     const val = (document.getElementById('jobNew').value||'').trim();
     if(!val) return;
@@ -139,7 +138,7 @@ function initAppUI(){
     fillSelect(document.getElementById('outJobsite'), jobs);
   });
 
-  // Confirmar Saída → salva um registro "em aberto"
+  // Confirmar Saída
   const btnCheckout = document.getElementById('btnCheckout');
   btnCheckout?.addEventListener('click', ()=>{
     const items = Object.entries(ctx.pickState)
@@ -148,6 +147,8 @@ function initAppUI(){
         const i = Number(k.split('_')[1]||0);
         return { idx:i, name:(tools[i]?.name||''), take:Number(v.take||0) };
       });
+
+    if(items.length===0){ alert('Selecione ao menos uma ferramenta.'); return; }
 
     const job = document.getElementById('outJobsite')?.value || '';
     const time = document.getElementById('outTime')?.value || new Date().toISOString().slice(0,16);
@@ -166,7 +167,7 @@ function initAppUI(){
     refreshReturnSelect();
   });
 
-  // Confirmar Retorno → fecha o registro
+  // Confirmar Retorno
   const btnFinishReturn = document.getElementById('btnFinishReturn');
   btnFinishReturn?.addEventListener('click', ()=>{
     const sel = document.getElementById('retOpen');
@@ -202,11 +203,9 @@ function initAppUI(){
 
 /* bootstrap */
 function init(){
-  say('iniciando…');
   bindAuth();
   const u = currentUser();
   if(u){ showApp(u); initAppUI(); } else { showLogin(); }
   document.addEventListener('user:login', ()=>{ initAppUI(); });
-  say('pronto');
 }
 document.addEventListener('DOMContentLoaded', init);
