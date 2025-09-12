@@ -1,4 +1,4 @@
-// auth.js — v3.0.1
+// auth.js — v3.0.2-min (compatível com index 3.0)
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
 const norm  = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -63,7 +63,7 @@ export function showApp(u){
   document.getElementById('userName').textContent = u.name || 'Usuário';
   document.getElementById('userRole').textContent = u.role || 'Operação';
 
-  // avatar estava estranho no mobile — vamos esconder
+  // avatar podia ficar estranho no mobile — apenas ocultamos
   const av = document.getElementById('avatar');
   if(av) av.style.display = 'none';
 
