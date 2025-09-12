@@ -1,4 +1,4 @@
-// auth.js — v8r: login + permissões
+// auth.js — v3.0.1
 import { LS, users as USERS_FROM_STATE, setState } from './state.js';
 
 const norm  = (s)=> (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -6,9 +6,9 @@ const FIRST = (s)=> (String(s||'').trim().split(/\s+/)[0]||'');
 
 const USERS_KEY = 'mp_users_v1';
 const DEFAULT_USERS = [
-  { login:'jhonatan', name:'Jhonatan reck', role:'Admin', pass:'152205' },
-  { login:'emerson',  name:'Emerson Iuri Rangel Veiga Dias', role:'Supervisor', pass:'121098' },
-  { login:'toni',     name:'Toni Anderson de Souza', role:'Supervisor', pass:'041282' },
+  { login:'jhonatan', name:'Jhonatan reck', role:'Admin',      pass:'152205' },
+  { login:'emerson',  name:'Emerson Iuri Rangel Veiga Dias',   role:'Supervisor', pass:'121098' },
+  { login:'toni',     name:'Toni Anderson de Souza',           role:'Supervisor', pass:'041282' },
 ];
 
 function seedFromState(list){
@@ -62,7 +62,10 @@ export function showApp(u){
 
   document.getElementById('userName').textContent = u.name || 'Usuário';
   document.getElementById('userRole').textContent = u.role || 'Operação';
-  document.getElementById('avatar').textContent   = (u.name||'U').slice(0,1).toUpperCase();
+
+  // avatar estava estranho no mobile — vamos esconder
+  const av = document.getElementById('avatar');
+  if(av) av.style.display = 'none';
 
   const isAdmin = u.role === 'Admin';
   const cadBtn = document.getElementById('tabCadButton');
