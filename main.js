@@ -1,4 +1,4 @@
-// main.js — v3.0.2-min: mantém index 3.0; salva saídas; retorno; export CSV
+// main.js — v3.0.3-min: retorno com status por ferramenta + export CSV
 import { LS, write } from './state.js';
 import { tools, teams, jobs, user } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
@@ -30,12 +30,98 @@ function setupTabs(){
       Object.keys(sections).forEach(k=>{
         sections[k].classList.toggle('hidden', k!==tab);
       });
-      if(tab==='retorno') refreshReturnSelect();
+      if(tab==='retorno') refreshReturnSelect(true);
     });
   });
 }
 
-function refreshReturnSelect(){
+/* ---------- RETORNO: UI dinâmica do checklist ---------- */
+function ensureRetToolsBox(){
+  const sec = document.getElementById('tab-retorno');
+  if(!sec) return null;
+  let box = document.getElementById('retToolsBox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'retToolsBox';
+    box.className = 'card mt';
+    box.innerHTML = `
+      <div class="between"><h3>Checklist de Ferramentas</h3>
+        <span class="small">Marque o que voltou e o status</span>
+      </div>
+      <div class="tableWrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Voltou</th>
+              <th>Ferramenta</th>
+              <th>Qtd levada</th>
+              <th>Status</th>
+              <th>Obs</th>
+            </tr>
+          </thead>
+          <tbody id="retToolsTbody"></tbody>
+        </table>
+      </div>
+    `;
+    // Insere antes do bloco de observações (se existir) ou no final
+    const notes = document.getElementById('retNotes')?.closest('.mt') || sec.lastElementChild;
+    sec.insertBefore(box, notes);
+  }
+  return box;
+}
+
+function renderReturnChecklist(check){
+  const box = ensureRetToolsBox(); if(!box) return;
+  const tbody = document.getElementById('retToolsTbody'); if(!tbody) return;
+
+  // estado atual (se já retornou parcialmente)
+  const items = check.items || [];
+
+  tbody.innerHTML = items.map((it,idx)=>{
+    const back   = it.back ?? true;
+    const status = it.status || 'OK'; // OK | Faltou | Defeito
+    const obs    = it.obsBack || '';
+    return `
+      <tr data-i="${idx}">
+        <td style="text-align:center"><input type="checkbox" class="rt-back" ${back?'checked':''}></td>
+        <td>${it.name||'-'}</td>
+        <td>${it.take??0}</td>
+        <td>
+          <select class="rt-status">
+            <option value="OK" ${status==='OK'?'selected':''}>OK</option>
+            <option value="Faltou" ${status==='Faltou'?'selected':''}>Faltou</option>
+            <option value="Defeito" ${status==='Defeito'?'selected':''}>Defeito</option>
+          </select>
+        </td>
+        <td><input class="rt-obs" value="${obs.replace(/"/g,'&quot;')}" placeholder="Observação" /></td>
+      </tr>
+    `;
+  }).join('');
+
+  if(!tbody.dataset.bound){
+    tbody.dataset.bound = '1';
+    tbody.addEventListener('input', (e)=>{
+      const tr = e.target.closest('tr[data-i]'); if(!tr) return;
+      const i  = Number(tr.dataset.i);
+      const fieldBack   = tr.querySelector('.rt-back').checked;
+      const fieldStatus = tr.querySelector('.rt-status').value;
+      const fieldObs    = tr.querySelector('.rt-obs').value;
+      check.items[i].back   = fieldBack;
+      check.items[i].status = fieldStatus;
+      check.items[i].obsBack= fieldObs;
+      // não salva ainda; salva ao confirmar retorno
+    });
+    tbody.addEventListener('change', (e)=>{
+      const tr = e.target.closest('tr[data-i]'); if(!tr) return;
+      const i  = Number(tr.dataset.i);
+      check.items[i].back   = tr.querySelector('.rt-back').checked;
+      check.items[i].status = tr.querySelector('.rt-status').value;
+    });
+  }
+}
+
+/* ---------- RETORNO: carregar select ---------- */
+function refreshReturnSelect(renderChecklist=false){
   const sel = document.getElementById('retOpen'); if(!sel) return;
   const list = openCheckouts();
   sel.innerHTML = '';
@@ -46,24 +132,41 @@ function refreshReturnSelect(){
     o.textContent = `${when} — ${ch.job} — ${ch.employees.join(', ')}`;
     sel.appendChild(o);
   });
+
+  if(renderChecklist){
+    const firstId = sel.value;
+    const all = loadChecks();
+    const check = all.find(x=>x.id===firstId);
+    if(check) renderReturnChecklist(check);
+  }
 }
 
-/* Export CSV (abre no Excel) */
+/* Export CSV (abre no Excel) — inclui status por item */
 function exportCSV(){
   const all = loadChecks();
   const rows = [
-    ['id','data_saida','obra','funcionarios','itens(qtd)','status','data_retorno','km_retorno','obs'],
-    ...all.map(ch=>[
-      ch.id,
-      ch.timeOut,
-      ch.job,
-      ch.employees.join('; '),
-      ch.items.map(it=>`${it.name}:${it.take}`).join(' | '),
-      ch.closed?'Fechado':'Aberto',
-      ch.timeIn || '',
-      ch.kmIn || '',
-      ch.notes || ''
-    ])
+    ['id','data_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
+    ...all.map(ch=>{
+      const itens   = ch.items.map(it=>`${it.name}:${it.take}`).join(' | ');
+      const iStat   = ch.items.map(it=>{
+        const st = it.status || (it.back===false ? 'Faltou' : 'OK');
+        const bk = it.back===false ? 'não voltou' : 'voltou';
+        const ob = it.obsBack ? ` (${it.obsBack})` : '';
+        return `${it.name}:${bk}/${st}${ob}`;
+      }).join(' | ');
+      return [
+        ch.id,
+        ch.timeOut,
+        ch.job,
+        ch.employees.join('; '),
+        itens,
+        iStat,
+        ch.closed?'Fechado':'Aberto',
+        ch.timeIn || '',
+        ch.kmIn || '',
+        ch.notes || ''
+      ];
+    })
   ];
   const csv = rows.map(r=>r.map(v=>{
     const s = String(v??'');
@@ -145,7 +248,14 @@ function initAppUI(){
       .filter(([_,v])=> (v?.take||0)>0)
       .map(([k,v])=>{
         const i = Number(k.split('_')[1]||0);
-        return { idx:i, name:(tools[i]?.name||''), take:Number(v.take||0) };
+        return {
+          idx:i,
+          name:(tools[i]?.name||''),
+          take:Number(v.take||0),
+          back:true,        // padrão: voltou
+          status:'OK',      // padrão
+          obsBack:''        // observação retorno
+        };
       });
 
     if(items.length===0){ alert('Selecione ao menos uma ferramenta.'); return; }
@@ -164,8 +274,19 @@ function initAppUI(){
     };
     const all = loadChecks(); all.push(ch); saveChecks(all);
     alert('Saída registrada!');
-    refreshReturnSelect();
+    refreshReturnSelect(true);
   });
+
+  // Quando trocar a saída selecionada → render checklist
+  const retOpenSel = document.getElementById('retOpen');
+  if(retOpenSel && !retOpenSel.dataset.bound){
+    retOpenSel.dataset.bound='1';
+    retOpenSel.addEventListener('change', ()=>{
+      const all = loadChecks();
+      const ch = all.find(x=>x.id===retOpenSel.value);
+      if(ch) renderReturnChecklist(ch);
+    });
+  }
 
   // Confirmar Retorno
   const btnFinishReturn = document.getElementById('btnFinishReturn');
@@ -179,13 +300,14 @@ function initAppUI(){
     const all = loadChecks();
     const idx = all.findIndex(x=>x.id===id);
     if(idx>=0){
+      // os campos por item já foram atualizados nos handlers do checklist
       all[idx].closed = true;
       all[idx].kmIn   = km;
       all[idx].timeIn = tIn;
       all[idx].notes  = obs;
       saveChecks(all);
       alert('Retorno confirmado!');
-      refreshReturnSelect();
+      refreshReturnSelect(true);
     }else{
       alert('Registro não encontrado.');
     }
@@ -197,8 +319,8 @@ function initAppUI(){
   btnPDF?.addEventListener('click', ()=> alert('Relatório PDF: em breve.'));
   btnXLS?.addEventListener('click', exportCSV);
 
-  // Inicializa select de retornos
-  refreshReturnSelect();
+  // Inicializa select de retornos + checklist
+  refreshReturnSelect(true);
 }
 
 /* bootstrap */
