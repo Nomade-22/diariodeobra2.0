@@ -1,4 +1,4 @@
-// ui.js — v3.0.1
+// ui.js — v3.0.2-min (sem mudar HTML): corrige salvar e alinha picker
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 
@@ -39,7 +39,7 @@ export function renderTools(onChange){
     list.appendChild(row);
   });
 
-  // DELEGAÇÃO: usa closest() (corrige toque no <span> dentro do botão)
+  // Delegação robusta: usa closest para capturar clique em <span>
   if(!list.dataset.bound){
     list.dataset.bound='1';
     list.addEventListener('click', (e)=>{
@@ -57,7 +57,7 @@ export function renderTools(onChange){
         const qty  = Math.max(0, Number(row.querySelector('.t-qty')?.value||0));
         const obs  = row.querySelector('.t-obs')?.value?.trim()||'';
         tools[idx] = { name, code, qty, obs };
-        write(LS.tools,tools); renderTools(onChange);
+        write(LS.tools,tools); // mantém render atual; não recria linhas
         if(typeof onChange==='function') onChange();
       }
     });
@@ -92,7 +92,7 @@ export function renderTeams(onChange){
       }
       if(e.target.closest('.act-save-team')){
         const name = li.querySelector('.tm-name')?.value?.trim(); if(!name) return;
-        teams[idx]=name; write(LS.teams,teams); renderTeams(onChange);
+        teams[idx]=name; write(LS.teams,teams);
         if(typeof onChange==='function') onChange();
       }
     });
@@ -126,7 +126,7 @@ export function renderJobs(onChange){
       }
       if(e.target.closest('.act-save-job')){
         const name = li.querySelector('.jb-name')?.value?.trim(); if(!name) return;
-        jobs[idx]=name; write(LS.jobs,jobs); renderJobs(onChange);
+        jobs[idx]=name; write(LS.jobs,jobs);
         if(typeof onChange==='function') onChange();
       }
     });
@@ -134,7 +134,7 @@ export function renderJobs(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* --------- PICKER (SAÍDA) — corrige layout no mobile --------- */
+/* --------- PICKER (SAÍDA) — mantém HTML, ajusta alinhamento --------- */
 export function renderPicker(state){
   const box = byId('pickList'); const selCount = byId('selCount');
   if(!box) return;
@@ -147,7 +147,7 @@ export function renderPicker(state){
     const checked = take>0;
     const row = document.createElement('div');
     row.className = 'rowline';
-    // grid explícito para alinhar no celular
+    // alinhamento em grid sem alterar o HTML
     row.style.display = 'grid';
     row.style.gridTemplateColumns = '40px 1.3fr 1fr .7fr 1.1fr';
     row.style.alignItems = 'center';
@@ -188,7 +188,7 @@ export function renderPicker(state){
   };
 }
 
-/* --------- CHECKBOXES Funcionários --------- */
+/* --------- Funcionários (checkboxes) --------- */
 export function renderEmployeesChoice(ctx){
   const box = byId('outEmployees'); if(!box) return;
   box.innerHTML = '';
@@ -199,10 +199,13 @@ export function renderEmployeesChoice(ctx){
     row.innerHTML = `<input type="checkbox" class="emp-check" id="${id}" data-name="${n}"><span>${n}</span>`;
     box.appendChild(row);
   });
-  box.addEventListener('change', (e)=>{
-    const chk = e.target.closest?.('.emp-check'); if(!chk) return;
-    const nm = chk.dataset.name;
-    if(chk.checked) ctx.employeesSelected.add(nm);
-    else ctx.employeesSelected.delete(nm);
-  });
+  if(!box.dataset.bound){
+    box.dataset.bound='1';
+    box.addEventListener('change', (e)=>{
+      const chk = e.target.closest?.('.emp-check'); if(!chk) return;
+      const nm = chk.dataset.name;
+      if(chk.checked) ctx.employeesSelected.add(nm);
+      else ctx.employeesSelected.delete(nm);
+    });
+  }
 }
