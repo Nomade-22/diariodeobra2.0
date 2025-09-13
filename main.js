@@ -1,15 +1,25 @@
-// main.js — v3.0.4: delegação estável p/ botões de cadastro + retorno c/ status único
+// main.js — v3.0.5: Financeiro (Admin) + PDF real (print-to-PDF) + retorno com condição única
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
 import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
 
+const getUser = ()=> { try{return JSON.parse(localStorage.getItem(LS.user)||'null');}catch{return null;} };
+const isAdmin = ()=> (getUser()?.role === 'Admin');
+
+/* saídas/retornos */
 const LS_CHECKS = 'mp_checkouts_v1';
 const loadChecks    = ()=> { try{ return JSON.parse(localStorage.getItem(LS_CHECKS)||'[]'); }catch{ return []; } };
 const saveChecks    = (arr)=> localStorage.setItem(LS_CHECKS, JSON.stringify(arr||[]));
 const openCheckouts = ()=> loadChecks().filter(x=>!x.closed);
-const getUser       = ()=> { try{return JSON.parse(localStorage.getItem(LS.user)||'null');}catch{return null;} };
-const isAdmin       = ()=> (getUser()?.role === 'Admin');
+
+/* financeiro */
+const LS_FIN = 'mp_finance_v1';
+function loadFin(){ try{ return JSON.parse(localStorage.getItem(LS_FIN)||'{"ofs":[]}'); } catch{ return {ofs:[]}; } }
+function saveFin(data){ localStorage.setItem(LS_FIN, JSON.stringify(data||{ofs:[]})); }
+
+function money(n){ const v = Number(n||0); return isFinite(v) ? v : 0; }
+function fmt(n){ return money(n).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
 
 /* Tabs */
 function setupTabs(){
@@ -29,6 +39,7 @@ function setupTabs(){
         sections[k].classList.toggle('hidden', k!==tab);
       });
       if(tab==='retorno') refreshReturnSelect(true);
+      if(tab==='finance')  renderFinance();  // monta a UI do Financeiro
     });
   });
 }
@@ -130,7 +141,172 @@ function refreshReturnSelect(renderChecklist=false){
   }
 }
 
-/* Export CSV (abre no Excel) */
+/* ---------- Financeiro (Admin) ---------- */
+function renderFinance(){
+  const sec = document.getElementById('tab-finance'); if(!sec) return;
+  if(!isAdmin()){
+    sec.innerHTML = `<p>Apenas Admin pode acessar o Financeiro.</p>`;
+    return;
+  }
+
+  const data = loadFin();
+  // Monta UI
+  sec.innerHTML = `
+    <h2>Financeiro (Admin)</h2>
+    <div class="card">
+      <h3>Nova OF</h3>
+      <div class="row threecol">
+        <div><label>Nº OF</label><input id="finOfNum" placeholder="Ex.: 1234"></div>
+        <div><label>Obra/Cliente</label><select id="finOfJob"></select></div>
+        <div><label>Valor contratado</label><input id="finOfVal" type="number" step="0.01" placeholder="0,00"></div>
+      </div>
+      <div class="mt"><button id="finAddOf" class="btn">Adicionar OF</button></div>
+    </div>
+
+    <div class="card">
+      <h3>OFs cadastradas</h3>
+      <div class="tableWrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Nº OF</th>
+              <th>Obra</th>
+              <th>Contratado</th>
+              <th>Gasto</th>
+              <th>Saldo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="finList"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="finDetails" style="display:none"></div>
+  `;
+
+  // opções de obras
+  fillSelect(document.getElementById('finOfJob'), (loadJobsSafe()));
+
+  const finList = document.getElementById('finList');
+
+  function calc(of){
+    const contratado = money(of.value || 0);
+    const gasto = (of.expenses||[]).reduce((a,e)=> a + money(e.amount), 0);
+    const saldo = contratado - gasto;
+    return { contratado, gasto, saldo };
+  }
+
+  function renderList(){
+    const ofs = data.ofs || [];
+    finList.innerHTML = ofs.map((of,idx)=>{
+      const k = calc(of);
+      return `
+        <tr data-i="${idx}">
+          <td>${of.number||'-'}</td>
+          <td>${of.job||'-'}</td>
+          <td>${fmt(k.contratado)}</td>
+          <td>${fmt(k.gasto)}</td>
+          <td>${fmt(k.saldo)}</td>
+          <td>
+            <button class="btn xs" data-act="open">Abrir</button>
+            <button class="btn xs" data-act="del">Excluir</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderDetails(i){
+    const wrap = document.getElementById('finDetails');
+    const of = (data.ofs||[])[i];
+    if(!of){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+    const k = calc(of);
+    wrap.style.display='block';
+    wrap.innerHTML = `
+      <h3>OF ${of.number} — ${of.job}</h3>
+      <p><b>Contratado:</b> ${fmt(k.contratado)} • <b>Gasto:</b> ${fmt(k.gasto)} • <b>Saldo:</b> ${fmt(k.saldo)}</p>
+      <div class="row threecol">
+        <div><label>Descrição</label><input id="finExpDesc" placeholder="Ex.: Material, Mão-de-obra"></div>
+        <div><label>Valor</label><input id="finExpVal" type="number" step="0.01" placeholder="0,00"></div>
+        <div style="align-self:end"><button id="finAddExp" class="btn">Adicionar lançamento</button></div>
+      </div>
+      <div class="tableWrap mt">
+        <table class="tbl">
+          <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Ações</th></tr></thead>
+          <tbody id="finExpList">
+            ${(of.expenses||[]).map((e,ix)=>`
+              <tr data-ix="${ix}">
+                <td>${new Date(e.date||Date.now()).toLocaleString('pt-BR')}</td>
+                <td>${e.desc||'-'}</td>
+                <td>${fmt(e.amount)}</td>
+                <td><button class="btn xs" data-act="del-exp">Excluir</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // bind add expense
+    document.getElementById('finAddExp').onclick = ()=>{
+      const desc = document.getElementById('finExpDesc').value.trim();
+      const val  = money(document.getElementById('finExpVal').value);
+      if(!desc || !val){ alert('Informe descrição e valor.'); return; }
+      of.expenses = of.expenses || [];
+      of.expenses.push({ date: new Date().toISOString(), desc, amount: val });
+      saveFin(data);
+      renderDetails(i);
+      renderList();
+    };
+
+    // bind delete expense (delegação)
+    document.getElementById('finExpList').onclick = (ev)=>{
+      const btn = ev.target.closest('[data-act="del-exp"]'); if(!btn) return;
+      const tr = btn.closest('tr[data-ix]'); const ix = Number(tr?.dataset.ix||-1);
+      if(ix>=0){ of.expenses.splice(ix,1); saveFin(data); renderDetails(i); renderList(); }
+    };
+  }
+
+  // bind add OF
+  document.getElementById('finAddOf').onclick = ()=>{
+    const num = document.getElementById('finOfNum').value.trim();
+    const job = document.getElementById('finOfJob').value;
+    const val = money(document.getElementById('finOfVal').value);
+    if(!num || !job || !val){ alert('Preencha Nº da OF, Obra e Valor.'); return; }
+    data.ofs = data.ofs || [];
+    data.ofs.push({ number:num, job, value: val, expenses: [] });
+    saveFin(data);
+    // limpa
+    document.getElementById('finOfNum').value='';
+    document.getElementById('finOfVal').value='';
+    renderList();
+  };
+
+  // delegação tabela OFs
+  finList.onclick = (ev)=>{
+    const btn = ev.target.closest('[data-act]'); if(!btn) return;
+    const tr = btn.closest('tr[data-i]'); const i = Number(tr?.dataset.i||-1); if(i<0) return;
+    if(btn.dataset.act==='del'){
+      data.ofs.splice(i,1); saveFin(data); renderList(); renderDetails(-1); return;
+    }
+    if(btn.dataset.act==='open'){
+      renderDetails(i); return;
+    }
+  };
+
+  renderList();
+  renderDetails(-1);
+}
+
+function loadJobsSafe(){
+  try{
+    const arr = JSON.parse(localStorage.getItem(LS.jobs) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  }catch{ return []; }
+}
+
+/* -------- Exportações -------- */
 function exportCSV(){
   const all = loadChecks();
   const rows = [
@@ -169,14 +345,121 @@ function exportCSV(){
   URL.revokeObjectURL(url);
 }
 
-/* ---------- Delegação estável para os botões de CADASTROS ---------- */
+function exportPDF(){
+  if(!isAdmin()){ alert('Somente Admin pode exportar PDF.'); return; }
+  const u = getUser();
+  const checks = loadChecks();
+  const fin = loadFin();
+
+  const html = `
+<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>Relatório Diário</title>
+<style>
+  body{ font-family: Arial, sans-serif; margin:24px; }
+  h1{ font-size:20px; margin:0 0 8px; }
+  h2{ font-size:16px; margin:20px 0 8px; }
+  table{ width:100%; border-collapse:collapse; font-size:12px; }
+  th,td{ border:1px solid #ccc; padding:6px; }
+  th{ background:#f3f4f6; text-align:left; }
+  .meta{ font-size:12px; color:#555; margin-bottom:12px; }
+  .small{ font-size:11px; color:#444; }
+  @media print {
+    @page { margin: 12mm; }
+    button{ display:none }
+  }
+</style>
+</head><body>
+  <h1>Relatório Diário</h1>
+  <div class="meta">Gerado em ${new Date().toLocaleString('pt-BR')} — Usuário: ${u?.name||'-'} (${u?.role||'-'})</div>
+
+  <h2>Saídas & Retornos</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Saída</th><th>Obra</th><th>Equipe</th><th>Itens (qtd)</th><th>Condição</th><th>Status</th><th>Retorno</th><th>KM</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${checks.map(ch=>{
+        const itens = ch.items.map(it=>`${it.name}:${it.take}`).join(' | ');
+        const conds = ch.items.map(it=>{
+          const st = it.cond || 'Retornou';
+          const ob = it.obsBack ? ` (${it.obsBack})` : '';
+          return `${it.name}:${st}${ob}`;
+        }).join(' | ');
+        return `
+          <tr>
+            <td>${ch.id}</td>
+            <td>${ch.timeOut||''}</td>
+            <td>${ch.job||''}</td>
+            <td class="small">${(ch.employees||[]).join('; ')}</td>
+            <td class="small">${itens}</td>
+            <td class="small">${conds}</td>
+            <td>${ch.closed?'Fechado':'Aberto'}</td>
+            <td>${ch.timeIn||''}</td>
+            <td>${ch.kmIn||''}</td>
+          </tr>
+        `;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <h2>Financeiro</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nº OF</th><th>Obra</th><th>Contratado</th><th>Gasto</th><th>Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${(fin.ofs||[]).map(of=>{
+        const gasto = (of.expenses||[]).reduce((a,e)=> a + (Number(e.amount)||0), 0);
+        const saldo = (Number(of.value)||0) - gasto;
+        return `
+          <tr>
+            <td>${of.number||'-'}</td>
+            <td>${of.job||'-'}</td>
+            <td>${fmt(of.value)}</td>
+            <td>${fmt(gasto)}</td>
+            <td>${fmt(saldo)}</td>
+          </tr>
+        `;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <div class="small" style="margin-top:8px">Detalhes de lançamentos por OF:</div>
+  ${(fin.ofs||[]).map(of=>`
+    <div class="small"><b>OF ${of.number} — ${of.job}</b></div>
+    <table>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead>
+      <tbody>
+        ${(of.expenses||[]).map(e=>`
+          <tr><td>${new Date(e.date||Date.now()).toLocaleString('pt-BR')}</td><td>${e.desc||'-'}</td><td>${fmt(e.amount)}</td></tr>
+        `).join('') || `<tr><td colspan="3" class="small">Sem lançamentos</td></tr>`}
+      </tbody>
+    </table>
+  `).join('')}
+
+  <button onclick="window.print()">Imprimir / Salvar como PDF</button>
+</body></html>`.trim();
+
+  const win = window.open('', '_blank');
+  win.document.open(); win.document.write(html); win.document.close();
+  // Em muitos navegadores, já abre com o botão "Imprimir". O usuário escolhe "Salvar como PDF".
+}
+
+/* ---------- Export CSV (Excel) ---------- */
+function exportCSVHandler(){ exportCSV(); }
+
+/* ---------- Cadastros: delegação estável ---------- */
 function bindCadastrosActions(ctx){
   const sec = document.getElementById('tab-cadastros');
   if(!sec || sec.dataset.addBound) return;
   sec.dataset.addBound = '1';
 
   sec.addEventListener('click', (e)=>{
-    // Botão "Adicionar" Ferramenta
     if(e.target.closest('#toolAdd')){
       if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
       tools.push({ name:'', code:'', qty:1, obs:'' });
@@ -185,7 +468,6 @@ function bindCadastrosActions(ctx){
       ctx.renderPicker();
       return;
     }
-    // Botão "Adicionar" Funcionário
     if(e.target.closest('#teamAdd')){
       if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
       const inp = document.getElementById('teamNew');
@@ -198,7 +480,6 @@ function bindCadastrosActions(ctx){
       renderEmployeesChoice(ctx);
       return;
     }
-    // Botão "Adicionar" Obra/Cliente
     if(e.target.closest('#jobAdd')){
       if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
       const inp = document.getElementById('jobNew');
@@ -214,7 +495,7 @@ function bindCadastrosActions(ctx){
   });
 }
 
-/* UI principal */
+/* ---------- UI principal ---------- */
 function initAppUI(){
   setupTabs();
 
@@ -234,7 +515,6 @@ function initAppUI(){
   renderJobs(()=>{});
   ctx.renderPicker();
 
-  // Delegação p/ Cadastros (um único listener robusto)
   bindCadastrosActions(ctx);
 
   // Confirmar Saída
@@ -247,7 +527,7 @@ function initAppUI(){
           idx:i,
           name:(tools[i]?.name||''),
           take:Number(v.take||0),
-          cond:'Retornou', // padrão
+          cond:'Retornou',
           obsBack:''
         };
       });
@@ -292,10 +572,11 @@ function initAppUI(){
     }
   });
 
-  // Exportações
-  document.getElementById('btnExportPDF')?.addEventListener('click', ()=> alert('Relatório PDF: em breve.'));
-  document.getElementById('btnExportXLS')?.addEventListener('click', exportCSV);
+  // Exportações (Admin)
+  document.getElementById('btnExportPDF')?.addEventListener('click', exportPDF);
+  document.getElementById('btnExportXLS')?.addEventListener('click', exportCSVHandler);
 
+  // Inicial
   refreshReturnSelect(true);
 }
 
