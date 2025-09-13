@@ -1,9 +1,10 @@
-// ui.js — v3.0.5: sem mudanças de layout; mantém cadastros e picker
+// ui.js — v3.1.2: mantém cadastros; melhora layout do picker (grade) em mobile
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 
 const byId = (id)=> document.getElementById(id);
 
+/* ----------------- Helpers ----------------- */
 export function fillSelect(sel, arr){
   if(!sel) return;
   sel.innerHTML = '';
@@ -13,7 +14,7 @@ export function fillSelect(sel, arr){
   });
 }
 
-/* --------- FERRAMENTAS (CATÁLOGO) --------- */
+/* ----------------- FERRAMENTAS (CATÁLOGO) ----------------- */
 export function renderTools(onChange){
   const list  = byId('toolsList');
   const count = byId('toolsCount');
@@ -65,7 +66,7 @@ export function renderTools(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* --------- FUNCIONÁRIOS --------- */
+/* ----------------- FUNCIONÁRIOS ----------------- */
 export function renderTeams(onChange){
   const ul = byId('teamsList'); if(!ul) return;
   ul.innerHTML = '';
@@ -99,7 +100,7 @@ export function renderTeams(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* --------- OBRAS/CLIENTES --------- */
+/* ----------------- OBRAS/CLIENTES ----------------- */
 export function renderJobs(onChange){
   const ul = byId('jobsList'); if(!ul) return;
   ul.innerHTML = '';
@@ -133,60 +134,106 @@ export function renderJobs(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* --------- PICKER (SAÍDA) — alinhado no mobile --------- */
+/* ----------------- PICKER (SAÍDA) — grade mobile caprichada ----------------- */
+function ensurePickerStyles(){
+  if(document.getElementById('pick-styles')) return;
+  const css = `
+  .pickWrap{width:100%;}
+  .pickHead,.pickRow{
+    display:grid;
+    grid-template-columns: 36px 1.6fr 1.1fr .8fr 100px; /* check | nome | código | qtd-cat | qtd-levar */
+    gap:10px; align-items:center;
+  }
+  .pickHead{
+    font-size:12px; opacity:.85; padding:6px 8px;
+  }
+  .pickRow{
+    padding:8px; border-radius:10px; background:rgba(255,255,255,.03);
+    margin-bottom:8px;
+  }
+  .pickRow input[type="number"]{ width:100%; height:36px; padding:4px 8px; }
+  .pickRow input[type="checkbox"]{ width:20px; height:20px; }
+  @media (min-width: 480px){
+    .pickHead,.pickRow{ grid-template-columns: 40px 2fr 1fr .8fr 120px; }
+  }`;
+  const style = document.createElement('style');
+  style.id='pick-styles';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
 export function renderPicker(state){
-  const box = byId('pickList'); const selCount = byId('selCount');
+  ensurePickerStyles();
+
+  const box = byId('pickList'); 
+  const selCount = byId('selCount');
   if(!box) return;
-  box.innerHTML = '';
+
   let totalSel = 0;
+
+  // Cabeçalho
+  box.innerHTML = `
+    <div class="pickWrap">
+      <div class="pickHead">
+        <div></div>
+        <div>Ferramenta</div>
+        <div>Código</div>
+        <div>Qtd catálogo</div>
+        <div>Qtd levar</div>
+      </div>
+      <div id="pickBody"></div>
+    </div>
+  `;
+
+  const body = byId('pickBody');
 
   tools.forEach((t,i)=>{
     const id = `pick_${i}`;
     const take = state[id]?.take ?? 0;
     const checked = take>0;
+
     const row = document.createElement('div');
-    row.className = 'rowline';
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = '40px 1.3fr 1fr .7fr 1.1fr';
-    row.style.alignItems = 'center';
+    row.className = 'pickRow';
+    row.dataset.id = id;
     row.innerHTML = `
       <div><input type="checkbox" class="pk-check" ${checked?'checked':''} data-id="${id}"></div>
       <div>${t.name||'-'}</div>
       <div>${t.code||''}</div>
       <div>${t.qty??0}</div>
-      <div><input class="pk-take" type="number" min="0" value="${take}" data-id="${id}" style="width:100%"></div>
+      <div><input class="pk-take" type="number" min="0" value="${take}" data-id="${id}"></div>
     `;
-    box.appendChild(row);
+    body.appendChild(row);
     if(checked) totalSel++;
   });
 
   if(selCount) selCount.textContent = `${totalSel} selecionadas`;
 
-  box.onclick = (ev)=>{
-    const chk = ev.target.closest?.('.pk-check'); if(!chk) return;
+  // Delegação: check ↔ quantidade
+  body.addEventListener('click', (ev)=>{
+    const chk = ev.target.closest('.pk-check'); if(!chk) return;
     const id = chk.dataset.id;
     const val = chk.checked ? (state[id]?.take||1) : 0;
     state[id] = { take: val };
-    const inp = box.querySelector(`.pk-take[data-id="${id}"]`); if(inp) inp.value = String(val);
+    const inp = body.querySelector(`.pk-take[data-id="${id}"]`); if(inp) inp.value = String(val);
     if(selCount){
-      const c = [...box.querySelectorAll('.pk-check:checked')].length;
+      const c = [...body.querySelectorAll('.pk-check:checked')].length;
       selCount.textContent = `${c} selecionadas`;
     }
-  };
-  box.oninput = (ev)=>{
-    const inp = ev.target.closest?.('.pk-take'); if(!inp) return;
+  });
+  body.addEventListener('input', (ev)=>{
+    const inp = ev.target.closest('.pk-take'); if(!inp) return;
     const id = inp.dataset.id;
     const val = Math.max(0, Number(inp.value||0));
     state[id] = { take: val };
-    const chk = box.querySelector(`.pk-check[data-id="${id}"]`); if(chk) chk.checked = val>0;
+    const chk = body.querySelector(`.pk-check[data-id="${id}"]`); if(chk) chk.checked = val>0;
     if(selCount){
-      const c = [...box.querySelectorAll('.pk-check:checked')].length;
+      const c = [...body.querySelectorAll('.pk-check:checked')].length;
       selCount.textContent = `${c} selecionadas`;
     }
-  };
+  });
 }
 
-/* --------- Funcionários (checkboxes) --------- */
+/* ----------------- Funcionários (checkboxes) ----------------- */
 export function renderEmployeesChoice(ctx){
   const box = byId('outEmployees'); if(!box) return;
   box.innerHTML = '';
