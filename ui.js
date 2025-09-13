@@ -1,4 +1,4 @@
-// ui.js — v3.0.2-min (sem mudar HTML): corrige salvar e alinha picker
+// ui.js — v3.0.5: sem mudanças de layout; mantém cadastros e picker
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 
@@ -39,7 +39,6 @@ export function renderTools(onChange){
     list.appendChild(row);
   });
 
-  // Delegação robusta: usa closest para capturar clique em <span>
   if(!list.dataset.bound){
     list.dataset.bound='1';
     list.addEventListener('click', (e)=>{
@@ -57,7 +56,7 @@ export function renderTools(onChange){
         const qty  = Math.max(0, Number(row.querySelector('.t-qty')?.value||0));
         const obs  = row.querySelector('.t-obs')?.value?.trim()||'';
         tools[idx] = { name, code, qty, obs };
-        write(LS.tools,tools); // mantém render atual; não recria linhas
+        write(LS.tools,tools);
         if(typeof onChange==='function') onChange();
       }
     });
@@ -134,7 +133,7 @@ export function renderJobs(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* --------- PICKER (SAÍDA) — mantém HTML, ajusta alinhamento --------- */
+/* --------- PICKER (SAÍDA) — alinhado no mobile --------- */
 export function renderPicker(state){
   const box = byId('pickList'); const selCount = byId('selCount');
   if(!box) return;
@@ -147,7 +146,6 @@ export function renderPicker(state){
     const checked = take>0;
     const row = document.createElement('div');
     row.className = 'rowline';
-    // alinhamento em grid sem alterar o HTML
     row.style.display = 'grid';
     row.style.gridTemplateColumns = '40px 1.3fr 1fr .7fr 1.1fr';
     row.style.alignItems = 'center';
