@@ -1,6 +1,6 @@
-// main.js — v3.0.3-rev: retorno com select único (Retornou/Ficou/Defeito)
+// main.js — v3.0.4: delegação estável p/ botões de cadastro + retorno c/ status único
 import { LS, write } from './state.js';
-import { tools, teams, jobs, user } from './state.js';
+import { tools, teams, jobs } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
 import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
 
@@ -8,6 +8,8 @@ const LS_CHECKS = 'mp_checkouts_v1';
 const loadChecks    = ()=> { try{ return JSON.parse(localStorage.getItem(LS_CHECKS)||'[]'); }catch{ return []; } };
 const saveChecks    = (arr)=> localStorage.setItem(LS_CHECKS, JSON.stringify(arr||[]));
 const openCheckouts = ()=> loadChecks().filter(x=>!x.closed);
+const getUser       = ()=> { try{return JSON.parse(localStorage.getItem(LS.user)||'null');}catch{return null;} };
+const isAdmin       = ()=> (getUser()?.role === 'Admin');
 
 /* Tabs */
 function setupTabs(){
@@ -71,7 +73,7 @@ function renderReturnChecklist(check){
   const items = check.items || [];
 
   tbody.innerHTML = items.map((it,idx)=>{
-    const cond = it.cond || 'Retornou'; // valor padrão
+    const cond = it.cond || 'Retornou';
     const obs  = it.obsBack || '';
     return `
       <tr data-i="${idx}">
@@ -84,7 +86,7 @@ function renderReturnChecklist(check){
             <option value="Defeito" ${cond==='Defeito'?'selected':''}>Defeito</option>
           </select>
         </td>
-        <td><input class="rt-obs" value="${obs.replace(/"/g,'&quot;')}" placeholder="Observação" /></td>
+        <td><input class="rt-obs" value="${String(obs).replace(/"/g,'&quot;')}" placeholder="Observação" /></td>
       </tr>
     `;
   }).join('');
@@ -167,6 +169,51 @@ function exportCSV(){
   URL.revokeObjectURL(url);
 }
 
+/* ---------- Delegação estável para os botões de CADASTROS ---------- */
+function bindCadastrosActions(ctx){
+  const sec = document.getElementById('tab-cadastros');
+  if(!sec || sec.dataset.addBound) return;
+  sec.dataset.addBound = '1';
+
+  sec.addEventListener('click', (e)=>{
+    // Botão "Adicionar" Ferramenta
+    if(e.target.closest('#toolAdd')){
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+      tools.push({ name:'', code:'', qty:1, obs:'' });
+      write(LS.tools, tools);
+      renderTools(()=>ctx.renderPicker());
+      ctx.renderPicker();
+      return;
+    }
+    // Botão "Adicionar" Funcionário
+    if(e.target.closest('#teamAdd')){
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+      const inp = document.getElementById('teamNew');
+      const val = (inp?.value||'').trim();
+      if(!val) return;
+      teams.push(val);
+      write(LS.teams, teams);
+      if(inp) inp.value='';
+      renderTeams(()=>{});
+      renderEmployeesChoice(ctx);
+      return;
+    }
+    // Botão "Adicionar" Obra/Cliente
+    if(e.target.closest('#jobAdd')){
+      if(!isAdmin()) return alert('Somente Admin pode cadastrar.');
+      const inp = document.getElementById('jobNew');
+      const val = (inp?.value||'').trim();
+      if(!val) return;
+      jobs.push(val);
+      write(LS.jobs, jobs);
+      if(inp) inp.value='';
+      renderJobs(()=>{});
+      fillSelect(document.getElementById('outJobsite'), jobs);
+      return;
+    }
+  });
+}
+
 /* UI principal */
 function initAppUI(){
   setupTabs();
@@ -186,6 +233,9 @@ function initAppUI(){
   renderTeams(()=>{});
   renderJobs(()=>{});
   ctx.renderPicker();
+
+  // Delegação p/ Cadastros (um único listener robusto)
+  bindCadastrosActions(ctx);
 
   // Confirmar Saída
   document.getElementById('btnCheckout')?.addEventListener('click', ()=>{
