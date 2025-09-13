@@ -1,4 +1,4 @@
-// main.js — v3.0.5: Financeiro (Admin) + PDF real (print-to-PDF) + retorno com condição única
+// main.js — v3.1.1: KM de Saída + (mantém 3.1: financeiro, PDF, retorno com status único)
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
@@ -17,7 +17,6 @@ const openCheckouts = ()=> loadChecks().filter(x=>!x.closed);
 const LS_FIN = 'mp_finance_v1';
 function loadFin(){ try{ return JSON.parse(localStorage.getItem(LS_FIN)||'{"ofs":[]}'); } catch{ return {ofs:[]}; } }
 function saveFin(data){ localStorage.setItem(LS_FIN, JSON.stringify(data||{ofs:[]})); }
-
 function money(n){ const v = Number(n||0); return isFinite(v) ? v : 0; }
 function fmt(n){ return money(n).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
 
@@ -39,9 +38,32 @@ function setupTabs(){
         sections[k].classList.toggle('hidden', k!==tab);
       });
       if(tab==='retorno') refreshReturnSelect(true);
-      if(tab==='finance')  renderFinance();  // monta a UI do Financeiro
+      if(tab==='finance')  renderFinance();
     });
   });
+}
+
+/* ---------- SAÍDA: inserir KM de Saída dinamicamente ---------- */
+function ensureOutKmField(){
+  const sec = document.getElementById('tab-saida');
+  if(!sec) return;
+  if(document.getElementById('outKm')) return; // já existe
+
+  // Procura bloco onde está o horário para inserir ao lado
+  const row = sec.querySelector('.row.twocol, .row.threecol, .row'); // layout flexível
+  // Cria um pequeno bloco “KM (Saída)”
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <label>KM (Saída)</label>
+    <input id="outKm" type="number" placeholder="0" />
+  `;
+  // Insere após o horário, se achar; senão, no final do primeiro row
+  if(row){
+    row.appendChild(wrap);
+  }else{
+    const before = sec.querySelector('.card'); // antes da tabela de ferramentas
+    sec.insertBefore(wrap, before || sec.firstChild);
+  }
 }
 
 /* ---------- RETORNO: UI dinâmica do checklist ---------- */
@@ -142,6 +164,13 @@ function refreshReturnSelect(renderChecklist=false){
 }
 
 /* ---------- Financeiro (Admin) ---------- */
+function loadJobsSafe(){
+  try{
+    const arr = JSON.parse(localStorage.getItem(LS.jobs) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  }catch{ return []; }
+}
+
 function renderFinance(){
   const sec = document.getElementById('tab-finance'); if(!sec) return;
   if(!isAdmin()){
@@ -150,7 +179,6 @@ function renderFinance(){
   }
 
   const data = loadFin();
-  // Monta UI
   sec.innerHTML = `
     <h2>Financeiro (Admin)</h2>
     <div class="card">
@@ -185,7 +213,6 @@ function renderFinance(){
     <div class="card" id="finDetails" style="display:none"></div>
   `;
 
-  // opções de obras
   fillSelect(document.getElementById('finOfJob'), (loadJobsSafe()));
 
   const finList = document.getElementById('finList');
@@ -248,7 +275,6 @@ function renderFinance(){
       </div>
     `;
 
-    // bind add expense
     document.getElementById('finAddExp').onclick = ()=>{
       const desc = document.getElementById('finExpDesc').value.trim();
       const val  = money(document.getElementById('finExpVal').value);
@@ -260,7 +286,6 @@ function renderFinance(){
       renderList();
     };
 
-    // bind delete expense (delegação)
     document.getElementById('finExpList').onclick = (ev)=>{
       const btn = ev.target.closest('[data-act="del-exp"]'); if(!btn) return;
       const tr = btn.closest('tr[data-ix]'); const ix = Number(tr?.dataset.ix||-1);
@@ -268,27 +293,26 @@ function renderFinance(){
     };
   }
 
-  // bind add OF
   document.getElementById('finAddOf').onclick = ()=>{
     const num = document.getElementById('finOfNum').value.trim();
     const job = document.getElementById('finOfJob').value;
     const val = money(document.getElementById('finOfVal').value);
     if(!num || !job || !val){ alert('Preencha Nº da OF, Obra e Valor.'); return; }
-    data.ofs = data.ofs || [];
-    data.ofs.push({ number:num, job, value: val, expenses: [] });
-    saveFin(data);
-    // limpa
+    const dataNow = loadFin();
+    dataNow.ofs = dataNow.ofs || [];
+    dataNow.ofs.push({ number:num, job, value: val, expenses: [] });
+    saveFin(dataNow);
     document.getElementById('finOfNum').value='';
     document.getElementById('finOfVal').value='';
-    renderList();
+    renderFinance(); // re-render inteiro para refletir novas OFs
   };
 
-  // delegação tabela OFs
   finList.onclick = (ev)=>{
     const btn = ev.target.closest('[data-act]'); if(!btn) return;
     const tr = btn.closest('tr[data-i]'); const i = Number(tr?.dataset.i||-1); if(i<0) return;
     if(btn.dataset.act==='del'){
-      data.ofs.splice(i,1); saveFin(data); renderList(); renderDetails(-1); return;
+      const latest = loadFin();
+      latest.ofs.splice(i,1); saveFin(latest); renderFinance(); return;
     }
     if(btn.dataset.act==='open'){
       renderDetails(i); return;
@@ -299,18 +323,11 @@ function renderFinance(){
   renderDetails(-1);
 }
 
-function loadJobsSafe(){
-  try{
-    const arr = JSON.parse(localStorage.getItem(LS.jobs) || '[]');
-    return Array.isArray(arr) ? arr : [];
-  }catch{ return []; }
-}
-
 /* -------- Exportações -------- */
 function exportCSV(){
   const all = loadChecks();
   const rows = [
-    ['id','data_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
+    ['id','data_saida','km_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
     ...all.map(ch=>{
       const itens = ch.items.map(it=>`${it.name}:${it.take}`).join(' | ');
       const iStat = ch.items.map(it=>{
@@ -321,6 +338,7 @@ function exportCSV(){
       return [
         ch.id,
         ch.timeOut,
+        ch.kmOut ?? '',
         ch.job,
         ch.employees.join('; '),
         itens,
@@ -353,8 +371,7 @@ function exportPDF(){
 
   const html = `
 <!DOCTYPE html><html><head>
-<meta charset="utf-8">
-<title>Relatório Diário</title>
+<meta charset="utf-8"><title>Relatório Diário</title>
 <style>
   body{ font-family: Arial, sans-serif; margin:24px; }
   h1{ font-size:20px; margin:0 0 8px; }
@@ -364,10 +381,7 @@ function exportPDF(){
   th{ background:#f3f4f6; text-align:left; }
   .meta{ font-size:12px; color:#555; margin-bottom:12px; }
   .small{ font-size:11px; color:#444; }
-  @media print {
-    @page { margin: 12mm; }
-    button{ display:none }
-  }
+  @media print { @page { margin: 12mm; } button{ display:none } }
 </style>
 </head><body>
   <h1>Relatório Diário</h1>
@@ -377,7 +391,8 @@ function exportPDF(){
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>Saída</th><th>Obra</th><th>Equipe</th><th>Itens (qtd)</th><th>Condição</th><th>Status</th><th>Retorno</th><th>KM</th>
+        <th>ID</th><th>Saída</th><th>KM Saída</th><th>Obra</th><th>Equipe</th>
+        <th>Itens (qtd)</th><th>Condição</th><th>Status</th><th>Retorno</th><th>KM Retorno</th>
       </tr>
     </thead>
     <tbody>
@@ -392,6 +407,7 @@ function exportPDF(){
           <tr>
             <td>${ch.id}</td>
             <td>${ch.timeOut||''}</td>
+            <td>${ch.kmOut??''}</td>
             <td>${ch.job||''}</td>
             <td class="small">${(ch.employees||[]).join('; ')}</td>
             <td class="small">${itens}</td>
@@ -447,7 +463,6 @@ function exportPDF(){
 
   const win = window.open('', '_blank');
   win.document.open(); win.document.write(html); win.document.close();
-  // Em muitos navegadores, já abre com o botão "Imprimir". O usuário escolhe "Salvar como PDF".
 }
 
 /* ---------- Export CSV (Excel) ---------- */
@@ -498,6 +513,7 @@ function bindCadastrosActions(ctx){
 /* ---------- UI principal ---------- */
 function initAppUI(){
   setupTabs();
+  ensureOutKmField(); // adiciona KM de Saída
 
   fillSelect(document.getElementById('outJobsite'), jobs);
   const outTime = document.getElementById('outTime');
@@ -531,11 +547,15 @@ function initAppUI(){
           obsBack:''
         };
       });
+
     if(items.length===0){ alert('Selecione ao menos uma ferramenta.'); return; }
+
     const job = document.getElementById('outJobsite')?.value || '';
     const time = document.getElementById('outTime')?.value || new Date().toISOString().slice(0,16);
+    const kmOut = Number(document.getElementById('outKm')?.value || 0);
     const employees = [...ctx.employeesSelected];
-    const ch = { id:'ch_'+Date.now(), timeOut:time, job, employees, items, closed:false };
+
+    const ch = { id:'ch_'+Date.now(), timeOut:time, kmOut, job, employees, items, closed:false };
     const all = loadChecks(); all.push(ch); saveChecks(all);
     alert('Saída registrada!');
     refreshReturnSelect(true);
@@ -574,7 +594,7 @@ function initAppUI(){
 
   // Exportações (Admin)
   document.getElementById('btnExportPDF')?.addEventListener('click', exportPDF);
-  document.getElementById('btnExportXLS')?.addEventListener('click', exportCSVHandler);
+  document.getElementById('btnExportXLS')?.addEventListener('click', exportCSV);
 
   // Inicial
   refreshReturnSelect(true);
