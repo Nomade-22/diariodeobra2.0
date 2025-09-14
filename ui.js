@@ -1,4 +1,8 @@
-// ui.js — v3.1.2: mantém cadastros; melhora layout do picker (grade) em mobile
+// ui.js — v3.1.3-ui
+// - Esconde o cabeçalho "legado" da grade de ferramentas (fica só o nosso)
+// - Mantém grade mobile (v3.1.2) e melhora responsividade do Financeiro
+// - Nenhuma mudança em index.html nem main.js
+
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 
@@ -138,6 +142,10 @@ export function renderJobs(onChange){
 function ensurePickerStyles(){
   if(document.getElementById('pick-styles')) return;
   const css = `
+  /* ======= Ferramentas (picker) ======= */
+  /* Esconde qualquer cabeçalho legado de tabela dentro da seção de saída */
+  #tab-saida .tableWrap thead{ display:none !important; }
+
   .pickWrap{width:100%;}
   .pickHead,.pickRow{
     display:grid;
@@ -155,7 +163,23 @@ function ensurePickerStyles(){
   .pickRow input[type="checkbox"]{ width:20px; height:20px; }
   @media (min-width: 480px){
     .pickHead,.pickRow{ grid-template-columns: 40px 2fr 1fr .8fr 120px; }
-  }`;
+  }
+
+  /* ======= Financeiro (lista de OFs) ======= */
+  #tab-finance .tableWrap{ overflow-x:auto; } /* rolagem só na tabela quando apertar */
+  #tab-finance table.tbl {
+    width:100%;
+    border-collapse: collapse;
+  }
+  #tab-finance table.tbl th, 
+  #tab-finance table.tbl td{
+    white-space: nowrap;  /* mantem números bonitos */
+  }
+  #tab-finance table.tbl td:nth-child(2){ white-space: normal; } /* Obra pode quebrar linha */
+  #tab-finance table.tbl td:last-child{
+    min-width:120px;       /* Ações sempre visíveis */
+  }
+  `;
   const style = document.createElement('style');
   style.id='pick-styles';
   style.textContent = css;
@@ -171,7 +195,7 @@ export function renderPicker(state){
 
   let totalSel = 0;
 
-  // Cabeçalho
+  // Render apenas UMA barra de título (a nossa)
   box.innerHTML = `
     <div class="pickWrap">
       <div class="pickHead">
