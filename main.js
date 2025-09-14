@@ -1,4 +1,9 @@
-// main.js — v3.1.1: KM de Saída + (mantém 3.1: financeiro, PDF, retorno com status único)
+// main.js — v3.1.3
+// - Regra: só quem abriu a saída pode fechar o retorno (Admin pode tudo)
+// - PDF/CSV mostram condição correta por ferramenta + "Criado por"
+// - Máscara BRL em financeiro (R$ 1.234,56)
+// - KM saída/retorno mantidos; financeiro e CSV/PDF mantidos
+
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
@@ -7,13 +12,13 @@ import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderE
 const getUser = ()=> { try{return JSON.parse(localStorage.getItem(LS.user)||'null');}catch{return null;} };
 const isAdmin = ()=> (getUser()?.role === 'Admin');
 
-/* saídas/retornos */
+/* Saídas/retornos */
 const LS_CHECKS = 'mp_checkouts_v1';
 const loadChecks    = ()=> { try{ return JSON.parse(localStorage.getItem(LS_CHECKS)||'[]'); }catch{ return []; } };
 const saveChecks    = (arr)=> localStorage.setItem(LS_CHECKS, JSON.stringify(arr||[]));
 const openCheckouts = ()=> loadChecks().filter(x=>!x.closed);
 
-/* financeiro */
+/* Financeiro */
 const LS_FIN = 'mp_finance_v1';
 function loadFin(){ try{ return JSON.parse(localStorage.getItem(LS_FIN)||'{"ofs":[]}'); } catch{ return {ofs:[]}; } }
 function saveFin(data){ localStorage.setItem(LS_FIN, JSON.stringify(data||{ofs:[]})); }
@@ -43,27 +48,15 @@ function setupTabs(){
   });
 }
 
-/* ---------- SAÍDA: inserir KM de Saída dinamicamente ---------- */
+/* ---------- SAÍDA: KM de saída (garante campo) ---------- */
 function ensureOutKmField(){
   const sec = document.getElementById('tab-saida');
   if(!sec) return;
-  if(document.getElementById('outKm')) return; // já existe
-
-  // Procura bloco onde está o horário para inserir ao lado
-  const row = sec.querySelector('.row.twocol, .row.threecol, .row'); // layout flexível
-  // Cria um pequeno bloco “KM (Saída)”
+  if(document.getElementById('outKm')) return;
+  const row = sec.querySelector('.row.twocol, .row.threecol, .row');
   const wrap = document.createElement('div');
-  wrap.innerHTML = `
-    <label>KM (Saída)</label>
-    <input id="outKm" type="number" placeholder="0" />
-  `;
-  // Insere após o horário, se achar; senão, no final do primeiro row
-  if(row){
-    row.appendChild(wrap);
-  }else{
-    const before = sec.querySelector('.card'); // antes da tabela de ferramentas
-    sec.insertBefore(wrap, before || sec.firstChild);
-  }
+  wrap.innerHTML = `<label>KM (Saída)</label><input id="outKm" type="number" placeholder="0" />`;
+  if(row){ row.appendChild(wrap); } else { sec.appendChild(wrap); }
 }
 
 /* ---------- RETORNO: UI dinâmica do checklist ---------- */
@@ -102,9 +95,7 @@ function ensureRetToolsBox(){
 function renderReturnChecklist(check){
   const box = ensureRetToolsBox(); if(!box) return;
   const tbody = document.getElementById('retToolsTbody'); if(!tbody) return;
-
   const items = check.items || [];
-
   tbody.innerHTML = items.map((it,idx)=>{
     const cond = it.cond || 'Retornou';
     const obs  = it.obsBack || '';
@@ -123,26 +114,9 @@ function renderReturnChecklist(check){
       </tr>
     `;
   }).join('');
-
-  if(!tbody.dataset.bound){
-    tbody.dataset.bound = '1';
-    tbody.addEventListener('input', (e)=>{
-      const tr = e.target.closest('tr[data-i]'); if(!tr) return;
-      const i  = Number(tr.dataset.i);
-      const cond = tr.querySelector('.rt-cond').value;
-      const obs  = tr.querySelector('.rt-obs').value;
-      check.items[i].cond   = cond;
-      check.items[i].obsBack= obs;
-    });
-    tbody.addEventListener('change',(e)=>{
-      const tr = e.target.closest('tr[data-i]'); if(!tr) return;
-      const i  = Number(tr.dataset.i);
-      check.items[i].cond = tr.querySelector('.rt-cond').value;
-    });
-  }
 }
 
-/* ---------- RETORNO: carregar select ---------- */
+/* ---------- RETORNO: select de saídas abertas ---------- */
 function refreshReturnSelect(renderChecklist=false){
   const sel = document.getElementById('retOpen'); if(!sel) return;
   const list = openCheckouts();
@@ -154,7 +128,6 @@ function refreshReturnSelect(renderChecklist=false){
     o.textContent = `${when} — ${ch.job} — ${ch.employees.join(', ')}`;
     sel.appendChild(o);
   });
-
   if(renderChecklist){
     const firstId = sel.value;
     const all = loadChecks();
@@ -171,6 +144,27 @@ function loadJobsSafe(){
   }catch{ return []; }
 }
 
+/* Máscara BRL em inputs text */
+function maskBRLInput(el){
+  const unmask = s => {
+    const onlyDigits = (s||'').replace(/\D/g,'');
+    return Number(onlyDigits||0)/100;
+  };
+  const format = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  el.type = 'text';
+  el.inputMode = 'numeric';
+  el.addEventListener('input', ()=>{
+    const raw = unmask(el.value);
+    el.dataset.raw = String(raw);
+    el.value = format(raw);
+  });
+  // formata o valor inicial (se houver)
+  const start = unmask(el.value);
+  el.dataset.raw = String(start);
+  el.value = format(start);
+}
+const getRawBRL = (el)=> Number(el?.dataset?.raw||0);
+
 function renderFinance(){
   const sec = document.getElementById('tab-finance'); if(!sec) return;
   if(!isAdmin()){
@@ -186,7 +180,7 @@ function renderFinance(){
       <div class="row threecol">
         <div><label>Nº OF</label><input id="finOfNum" placeholder="Ex.: 1234"></div>
         <div><label>Obra/Cliente</label><select id="finOfJob"></select></div>
-        <div><label>Valor contratado</label><input id="finOfVal" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Valor contratado</label><input id="finOfVal" placeholder="R$ 0,00"></div>
       </div>
       <div class="mt"><button id="finAddOf" class="btn">Adicionar OF</button></div>
     </div>
@@ -214,6 +208,8 @@ function renderFinance(){
   `;
 
   fillSelect(document.getElementById('finOfJob'), (loadJobsSafe()));
+  // máscara BRL (contratado)
+  maskBRLInput(document.getElementById('finOfVal'));
 
   const finList = document.getElementById('finList');
 
@@ -255,7 +251,7 @@ function renderFinance(){
       <p><b>Contratado:</b> ${fmt(k.contratado)} • <b>Gasto:</b> ${fmt(k.gasto)} • <b>Saldo:</b> ${fmt(k.saldo)}</p>
       <div class="row threecol">
         <div><label>Descrição</label><input id="finExpDesc" placeholder="Ex.: Material, Mão-de-obra"></div>
-        <div><label>Valor</label><input id="finExpVal" type="number" step="0.01" placeholder="0,00"></div>
+        <div><label>Valor</label><input id="finExpVal" placeholder="R$ 0,00"></div>
         <div style="align-self:end"><button id="finAddExp" class="btn">Adicionar lançamento</button></div>
       </div>
       <div class="tableWrap mt">
@@ -275,9 +271,13 @@ function renderFinance(){
       </div>
     `;
 
+    // máscara BRL no valor do lançamento
+    maskBRLInput(document.getElementById('finExpVal'));
+
+    // add expense
     document.getElementById('finAddExp').onclick = ()=>{
       const desc = document.getElementById('finExpDesc').value.trim();
-      const val  = money(document.getElementById('finExpVal').value);
+      const val  = getRawBRL(document.getElementById('finExpVal'));
       if(!desc || !val){ alert('Informe descrição e valor.'); return; }
       of.expenses = of.expenses || [];
       of.expenses.push({ date: new Date().toISOString(), desc, amount: val });
@@ -286,6 +286,7 @@ function renderFinance(){
       renderList();
     };
 
+    // delete expense
     document.getElementById('finExpList').onclick = (ev)=>{
       const btn = ev.target.closest('[data-act="del-exp"]'); if(!btn) return;
       const tr = btn.closest('tr[data-ix]'); const ix = Number(tr?.dataset.ix||-1);
@@ -293,20 +294,20 @@ function renderFinance(){
     };
   }
 
+  // add OF
   document.getElementById('finAddOf').onclick = ()=>{
     const num = document.getElementById('finOfNum').value.trim();
     const job = document.getElementById('finOfJob').value;
-    const val = money(document.getElementById('finOfVal').value);
+    const val = getRawBRL(document.getElementById('finOfVal'));
     if(!num || !job || !val){ alert('Preencha Nº da OF, Obra e Valor.'); return; }
     const dataNow = loadFin();
     dataNow.ofs = dataNow.ofs || [];
     dataNow.ofs.push({ number:num, job, value: val, expenses: [] });
     saveFin(dataNow);
-    document.getElementById('finOfNum').value='';
-    document.getElementById('finOfVal').value='';
-    renderFinance(); // re-render inteiro para refletir novas OFs
+    renderFinance();
   };
 
+  // list actions
   finList.onclick = (ev)=>{
     const btn = ev.target.closest('[data-act]'); if(!btn) return;
     const tr = btn.closest('tr[data-i]'); const i = Number(tr?.dataset.i||-1); if(i<0) return;
@@ -314,9 +315,7 @@ function renderFinance(){
       const latest = loadFin();
       latest.ofs.splice(i,1); saveFin(latest); renderFinance(); return;
     }
-    if(btn.dataset.act==='open'){
-      renderDetails(i); return;
-    }
+    if(btn.dataset.act==='open'){ renderDetails(i); return; }
   };
 
   renderList();
@@ -327,7 +326,7 @@ function renderFinance(){
 function exportCSV(){
   const all = loadChecks();
   const rows = [
-    ['id','data_saida','km_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
+    ['id','criado_por','data_saida','km_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
     ...all.map(ch=>{
       const itens = ch.items.map(it=>`${it.name}:${it.take}`).join(' | ');
       const iStat = ch.items.map(it=>{
@@ -337,6 +336,7 @@ function exportCSV(){
       }).join(' | ');
       return [
         ch.id,
+        ch.createdBy || '',
         ch.timeOut,
         ch.kmOut ?? '',
         ch.job,
@@ -364,7 +364,7 @@ function exportCSV(){
 }
 
 function exportPDF(){
-  if(!isAdmin()){ alert('Somente Admin pode exportar PDF.'); return; }
+  if(!isAdmin() && !getUser()){ alert('Permissão insuficiente.'); return; }
   const u = getUser();
   const checks = loadChecks();
   const fin = loadFin();
@@ -377,7 +377,7 @@ function exportPDF(){
   h1{ font-size:20px; margin:0 0 8px; }
   h2{ font-size:16px; margin:20px 0 8px; }
   table{ width:100%; border-collapse:collapse; font-size:12px; }
-  th,td{ border:1px solid #ccc; padding:6px; }
+  th,td{ border:1px solid #ccc; padding:6px; vertical-align:top; }
   th{ background:#f3f4f6; text-align:left; }
   .meta{ font-size:12px; color:#555; margin-bottom:12px; }
   .small{ font-size:11px; color:#444; }
@@ -391,8 +391,8 @@ function exportPDF(){
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>Saída</th><th>KM Saída</th><th>Obra</th><th>Equipe</th>
-        <th>Itens (qtd)</th><th>Condição</th><th>Status</th><th>Retorno</th><th>KM Retorno</th>
+        <th>ID</th><th>Criado por</th><th>Saída</th><th>KM Saída</th><th>Obra</th>
+        <th>Equipe</th><th>Itens (qtd)</th><th>Condição</th><th>Status</th><th>Retorno</th><th>KM Retorno</th>
       </tr>
     </thead>
     <tbody>
@@ -406,6 +406,7 @@ function exportPDF(){
         return `
           <tr>
             <td>${ch.id}</td>
+            <td>${ch.createdBy||''}</td>
             <td>${ch.timeOut||''}</td>
             <td>${ch.kmOut??''}</td>
             <td>${ch.job||''}</td>
@@ -465,7 +466,7 @@ function exportPDF(){
   win.document.open(); win.document.write(html); win.document.close();
 }
 
-/* ---------- Export CSV (Excel) ---------- */
+/* ---------- CSV handler ---------- */
 function exportCSVHandler(){ exportCSV(); }
 
 /* ---------- Cadastros: delegação estável ---------- */
@@ -513,7 +514,7 @@ function bindCadastrosActions(ctx){
 /* ---------- UI principal ---------- */
 function initAppUI(){
   setupTabs();
-  ensureOutKmField(); // adiciona KM de Saída
+  ensureOutKmField();
 
   fillSelect(document.getElementById('outJobsite'), jobs);
   const outTime = document.getElementById('outTime');
@@ -554,8 +555,9 @@ function initAppUI(){
     const time = document.getElementById('outTime')?.value || new Date().toISOString().slice(0,16);
     const kmOut = Number(document.getElementById('outKm')?.value || 0);
     const employees = [...ctx.employeesSelected];
+    const u = getUser();
 
-    const ch = { id:'ch_'+Date.now(), timeOut:time, kmOut, job, employees, items, closed:false };
+    const ch = { id:'ch_'+Date.now(), createdBy:(u?.name||''), timeOut:time, kmOut, job, employees, items, closed:false };
     const all = loadChecks(); all.push(ch); saveChecks(all);
     alert('Saída registrada!');
     refreshReturnSelect(true);
@@ -576,25 +578,49 @@ function initAppUI(){
   document.getElementById('btnFinishReturn')?.addEventListener('click', ()=>{
     const sel = document.getElementById('retOpen');
     const id  = sel?.value; if(!id){ alert('Selecione a saída.'); return; }
+
+    // Regra de permissão
+    const all = loadChecks();
+    const idx = all.findIndex(x=>x.id===id);
+    if(idx<0) return alert('Saída não encontrada.');
+    const u = getUser();
+    if(!isAdmin() && (all[idx].createdBy||'').toLowerCase() !== (u?.name||'').toLowerCase()){
+      alert('Somente quem abriu a saída pode confirmar o retorno (Admin pode tudo).');
+      return;
+    }
+
+    // Atualiza checklist com o que está na tela (condição/obs)
+    const tbody = document.getElementById('retToolsTbody');
+    if(tbody){
+      const rows = [...tbody.querySelectorAll('tr[data-i]')];
+      rows.forEach(tr=>{
+        const i = Number(tr.dataset.i||-1); if(i<0) return;
+        const cond = tr.querySelector('.rt-cond')?.value || 'Retornou';
+        const obs  = tr.querySelector('.rt-obs')?.value || '';
+        if(all[idx].items && all[idx].items[i]){
+          all[idx].items[i].cond = cond;
+          all[idx].items[i].obsBack = obs;
+        }
+      });
+    }
+
     const km  = Number(document.getElementById('retKm')?.value||0);
     const tIn = document.getElementById('retTime')?.value || new Date().toISOString().slice(0,16);
     const obs = document.getElementById('retNotes')?.value || '';
-    const all = loadChecks();
-    const idx = all.findIndex(x=>x.id===id);
-    if(idx>=0){
-      all[idx].closed = true;
-      all[idx].kmIn   = km;
-      all[idx].timeIn = tIn;
-      all[idx].notes  = obs;
-      saveChecks(all);
-      alert('Retorno confirmado!');
-      refreshReturnSelect(true);
-    }
+
+    all[idx].closed = true;
+    all[idx].kmIn   = km;
+    all[idx].timeIn = tIn;
+    all[idx].notes  = obs;
+    saveChecks(all);
+
+    alert('Retorno confirmado!');
+    refreshReturnSelect(true);
   });
 
-  // Exportações (Admin)
+  // Exportações
   document.getElementById('btnExportPDF')?.addEventListener('click', exportPDF);
-  document.getElementById('btnExportXLS')?.addEventListener('click', exportCSV);
+  document.getElementById('btnExportXLS')?.addEventListener('click', exportCSVHandler);
 
   // Inicial
   refreshReturnSelect(true);
