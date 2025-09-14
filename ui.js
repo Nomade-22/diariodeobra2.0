@@ -1,14 +1,57 @@
-// ui.js — v3.1.3-ui
-// - Esconde o cabeçalho "legado" da grade de ferramentas (fica só o nosso)
-// - Mantém grade mobile (v3.1.2) e melhora responsividade do Financeiro
-// - Nenhuma mudança em index.html nem main.js
-
+// ui.js — v3.1.4-ui
+// - Paleta de botões (verde/vermelho) injetada por CSS
+// - Grade de ferramentas (mobile) mantida
+// - Cadastros: Ferramentas/Funcionários/Obras com botões coloridos
+// - Cadastros: adiciona o card "Usuários" (Admin) com Add/Salvar/Excluir
 import { LS, write } from './state.js';
-import { tools, teams, jobs } from './state.js';
+import { tools, teams, jobs, users } from './state.js';
 
 const byId = (id)=> document.getElementById(id);
 
-/* ----------------- Helpers ----------------- */
+/* ---------- estilos globais (verde/vermelho + responsivo) ---------- */
+function ensureGlobalStyles(){
+  if(document.getElementById('global-palette')) return;
+  const css = `
+    /* paleta */
+    .btn-green{ background:#17612f !important; }
+    .btn-green:hover{ filter:brightness(1.05); }
+    .btn-red{ background:#7a1d1d !important; }
+    .btn-red:hover{ filter:brightness(1.05); }
+
+    /* picker: manter apenas nossa barra */
+    #tab-saida .tableWrap thead{ display:none !important; }
+
+    /* picker grid */
+    .pickWrap{width:100%;}
+    .pickHead,.pickRow{
+      display:grid;
+      grid-template-columns: 36px 1.6fr 1.1fr .8fr 100px;
+      gap:10px; align-items:center;
+    }
+    .pickHead{ font-size:12px; opacity:.85; padding:6px 8px; }
+    .pickRow{
+      padding:8px; border-radius:10px; background:rgba(255,255,255,.03);
+      margin-bottom:8px;
+    }
+    .pickRow input[type="number"]{ width:100%; height:36px; padding:4px 8px; }
+    .pickRow input[type="checkbox"]{ width:20px; height:20px; }
+    @media (min-width: 480px){
+      .pickHead,.pickRow{ grid-template-columns: 40px 2fr 1fr .8fr 120px; }
+    }
+
+    /* Financeiro: rolagem horizontal só na tabela de OF */
+    #tab-finance .tableWrap{ overflow-x:auto; }
+    #tab-finance table.tbl th, #tab-finance table.tbl td{ white-space:nowrap; }
+    #tab-finance table.tbl td:nth-child(2){ white-space:normal; }
+    #tab-finance table.tbl td:last-child{ min-width:120px; }
+  `;
+  const style = document.createElement('style');
+  style.id = 'global-palette';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
+/* ---------- helpers ---------- */
 export function fillSelect(sel, arr){
   if(!sel) return;
   sel.innerHTML = '';
@@ -18,12 +61,16 @@ export function fillSelect(sel, arr){
   });
 }
 
-/* ----------------- FERRAMENTAS (CATÁLOGO) ----------------- */
+/* ---------- FERRAMENTAS (CATÁLOGO) ---------- */
 export function renderTools(onChange){
+  ensureGlobalStyles();
   const list  = byId('toolsList');
   const count = byId('toolsCount');
   if(count) count.textContent = `${tools.length} itens`;
   if(!list) return;
+
+  // deixar "Adicionar" verde (se existir no HTML)
+  const addBtn = byId('toolAdd'); if(addBtn) addBtn.classList.add('btn-green');
 
   list.innerHTML = '';
   tools.forEach((t, i)=>{
@@ -37,8 +84,8 @@ export function renderTools(onChange){
       <div><input class="t-qty"  type="number" min="0" value="${t.qty??1}" /></div>
       <div><input class="t-obs"  value="${t.obs||''}" placeholder="Observações" /></div>
       <div class="actions">
-        <button class="btn xs act-save"><span>Salvar</span></button>
-        <button class="btn xs act-del"><span>Excluir</span></button>
+        <button class="btn xs btn-green act-save"><span>Salvar</span></button>
+        <button class="btn xs btn-red   act-del"><span>Excluir</span></button>
       </div>
     `;
     list.appendChild(row);
@@ -70,17 +117,19 @@ export function renderTools(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* ----------------- FUNCIONÁRIOS ----------------- */
+/* ---------- FUNCIONÁRIOS ---------- */
 export function renderTeams(onChange){
   const ul = byId('teamsList'); if(!ul) return;
+  const addBtn = byId('teamAdd'); if(addBtn) addBtn.classList.add('btn-green');
+
   ul.innerHTML = '';
   teams.forEach((name,i)=>{
     const li = document.createElement('li');
     li.className = 'rowline'; li.dataset.index = String(i);
     li.innerHTML = `
       <input class="tm-name" value="${name}" />
-      <button class="btn xs act-save-team"><span>Salvar</span></button>
-      <button class="btn xs act-del-team"><span>Excluir</span></button>
+      <button class="btn xs btn-green act-save-team"><span>Salvar</span></button>
+      <button class="btn xs btn-red   act-del-team"><span>Excluir</span></button>
     `;
     ul.appendChild(li);
   });
@@ -104,17 +153,19 @@ export function renderTeams(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* ----------------- OBRAS/CLIENTES ----------------- */
+/* ---------- OBRAS/CLIENTES ---------- */
 export function renderJobs(onChange){
   const ul = byId('jobsList'); if(!ul) return;
+  const addBtn = byId('jobAdd'); if(addBtn) addBtn.classList.add('btn-green');
+
   ul.innerHTML = '';
   jobs.forEach((name,i)=>{
     const li = document.createElement('li');
     li.className = 'rowline'; li.dataset.index = String(i);
     li.innerHTML = `
       <input class="jb-name" value="${name}" />
-      <button class="btn xs act-save-job"><span>Salvar</span></button>
-      <button class="btn xs act-del-job"><span>Excluir</span></button>
+      <button class="btn xs btn-green act-save-job"><span>Salvar</span></button>
+      <button class="btn xs btn-red   act-del-job"><span>Excluir</span></button>
     `;
     ul.appendChild(li);
   });
@@ -138,64 +189,13 @@ export function renderJobs(onChange){
   if(typeof onChange==='function') onChange();
 }
 
-/* ----------------- PICKER (SAÍDA) — grade mobile caprichada ----------------- */
-function ensurePickerStyles(){
-  if(document.getElementById('pick-styles')) return;
-  const css = `
-  /* ======= Ferramentas (picker) ======= */
-  /* Esconde qualquer cabeçalho legado de tabela dentro da seção de saída */
-  #tab-saida .tableWrap thead{ display:none !important; }
-
-  .pickWrap{width:100%;}
-  .pickHead,.pickRow{
-    display:grid;
-    grid-template-columns: 36px 1.6fr 1.1fr .8fr 100px; /* check | nome | código | qtd-cat | qtd-levar */
-    gap:10px; align-items:center;
-  }
-  .pickHead{
-    font-size:12px; opacity:.85; padding:6px 8px;
-  }
-  .pickRow{
-    padding:8px; border-radius:10px; background:rgba(255,255,255,.03);
-    margin-bottom:8px;
-  }
-  .pickRow input[type="number"]{ width:100%; height:36px; padding:4px 8px; }
-  .pickRow input[type="checkbox"]{ width:20px; height:20px; }
-  @media (min-width: 480px){
-    .pickHead,.pickRow{ grid-template-columns: 40px 2fr 1fr .8fr 120px; }
-  }
-
-  /* ======= Financeiro (lista de OFs) ======= */
-  #tab-finance .tableWrap{ overflow-x:auto; } /* rolagem só na tabela quando apertar */
-  #tab-finance table.tbl {
-    width:100%;
-    border-collapse: collapse;
-  }
-  #tab-finance table.tbl th, 
-  #tab-finance table.tbl td{
-    white-space: nowrap;  /* mantem números bonitos */
-  }
-  #tab-finance table.tbl td:nth-child(2){ white-space: normal; } /* Obra pode quebrar linha */
-  #tab-finance table.tbl td:last-child{
-    min-width:120px;       /* Ações sempre visíveis */
-  }
-  `;
-  const style = document.createElement('style');
-  style.id='pick-styles';
-  style.textContent = css;
-  document.head.appendChild(style);
-}
-
+/* ---------- PICKER (SAÍDA) ---------- */
 export function renderPicker(state){
-  ensurePickerStyles();
-
-  const box = byId('pickList'); 
-  const selCount = byId('selCount');
+  ensureGlobalStyles();
+  const box = byId('pickList'), selCount = byId('selCount');
   if(!box) return;
 
   let totalSel = 0;
-
-  // Render apenas UMA barra de título (a nossa)
   box.innerHTML = `
     <div class="pickWrap">
       <div class="pickHead">
@@ -208,14 +208,12 @@ export function renderPicker(state){
       <div id="pickBody"></div>
     </div>
   `;
-
   const body = byId('pickBody');
 
   tools.forEach((t,i)=>{
     const id = `pick_${i}`;
     const take = state[id]?.take ?? 0;
     const checked = take>0;
-
     const row = document.createElement('div');
     row.className = 'pickRow';
     row.dataset.id = id;
@@ -229,10 +227,8 @@ export function renderPicker(state){
     body.appendChild(row);
     if(checked) totalSel++;
   });
-
   if(selCount) selCount.textContent = `${totalSel} selecionadas`;
 
-  // Delegação: check ↔ quantidade
   body.addEventListener('click', (ev)=>{
     const chk = ev.target.closest('.pk-check'); if(!chk) return;
     const id = chk.dataset.id;
@@ -257,7 +253,7 @@ export function renderPicker(state){
   });
 }
 
-/* ----------------- Funcionários (checkboxes) ----------------- */
+/* ---------- Funcionários (checkboxes) ---------- */
 export function renderEmployeesChoice(ctx){
   const box = byId('outEmployees'); if(!box) return;
   box.innerHTML = '';
@@ -275,6 +271,108 @@ export function renderEmployeesChoice(ctx){
       const nm = chk.dataset.name;
       if(chk.checked) ctx.employeesSelected.add(nm);
       else ctx.employeesSelected.delete(nm);
+    });
+  }
+}
+
+/* ---------- Usuários (novo card dinâmico) ---------- */
+function ensureUsersCard(){
+  let card = byId('usersCard');
+  if(card) return card;
+  const cadSec = byId('tab-cadastros');
+  if(!cadSec) return null;
+  card = document.createElement('div');
+  card.className = 'card mt';
+  card.id = 'usersCard';
+  card.innerHTML = `
+    <h3>Usuários</h3>
+    <div class="row threecol">
+      <div><label>Nome</label><input id="userNewName" placeholder="Ex.: Maria"></div>
+      <div><label>Função</label>
+        <select id="userNewRole">
+          <option>Operação</option>
+          <option>Supervisor</option>
+          <option>Admin</option>
+        </select>
+      </div>
+      <div><label>Senha</label><input id="userNewPass" type="password" placeholder="••••••"></div>
+    </div>
+    <div class="mt"><button id="userAdd" class="btn btn-green">Adicionar usuário</button></div>
+
+    <div class="tableWrap mt">
+      <table class="tbl">
+        <thead>
+          <tr><th>#</th><th>Nome</th><th>Função</th><th>Senha</th><th>Ações</th></tr>
+        </thead>
+        <tbody id="usersList"></tbody>
+      </table>
+    </div>
+  `;
+  cadSec.appendChild(card);
+  return card;
+}
+
+export function renderUsers(){
+  const card = ensureUsersCard(); if(!card) return;
+  const list = byId('usersList'); if(!list) return;
+
+  list.innerHTML = '';
+  (users||[]).forEach((u,i)=>{
+    const tr = document.createElement('tr');
+    tr.dataset.index = String(i);
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><input class="u-name" value="${u.name||''}" /></td>
+      <td>
+        <select class="u-role">
+          <option ${u.role==='Operação'?'selected':''}>Operação</option>
+          <option ${u.role==='Supervisor'?'selected':''}>Supervisor</option>
+          <option ${u.role==='Admin'?'selected':''}>Admin</option>
+        </select>
+      </td>
+      <td><input class="u-pass" value="${u.pass||''}" /></td>
+      <td>
+        <button class="btn xs btn-green act-save-u">Salvar</button>
+        <button class="btn xs btn-red   act-del-u">Excluir</button>
+      </td>
+    `;
+    list.appendChild(tr);
+  });
+
+  // Add
+  const addBtn = byId('userAdd');
+  if(addBtn && !addBtn.dataset.bound){
+    addBtn.dataset.bound='1';
+    addBtn.addEventListener('click', ()=>{
+      const name = byId('userNewName')?.value?.trim();
+      const role = byId('userNewRole')?.value || 'Operação';
+      const pass = byId('userNewPass')?.value || '';
+      if(!name || !pass){ alert('Informe nome e senha.'); return; }
+      users.push({ name, role, pass });
+      write(LS.users, users);
+      byId('userNewName').value = '';
+      byId('userNewPass').value = '';
+      renderUsers();
+    });
+  }
+
+  // Save/Delete per linha
+  if(!list.dataset.bound){
+    list.dataset.bound='1';
+    list.addEventListener('click', (ev)=>{
+      const tr  = ev.target.closest('tr'); if(!tr) return;
+      const idx = Number(tr.dataset.index||-1); if(idx<0) return;
+      if(ev.target.closest('.act-del-u')){
+        users.splice(idx,1); write(LS.users, users); renderUsers(); return;
+      }
+      if(ev.target.closest('.act-save-u')){
+        const name = tr.querySelector('.u-name')?.value?.trim()||'';
+        const role = tr.querySelector('.u-role')?.value||'Operação';
+        const pass = tr.querySelector('.u-pass')?.value||'';
+        users[idx] = { name, role, pass };
+        write(LS.users, users);
+        renderUsers();
+      }
     });
   }
 }
