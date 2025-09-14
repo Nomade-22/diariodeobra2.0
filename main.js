@@ -1,13 +1,13 @@
-// main.js — v3.1.3
-// - Regra: só quem abriu a saída pode fechar o retorno (Admin pode tudo)
-// - PDF/CSV mostram condição correta por ferramenta + "Criado por"
-// - Máscara BRL em financeiro (R$ 1.234,56)
-// - KM saída/retorno mantidos; financeiro e CSV/PDF mantidos
+// main.js — v3.1.4
+// - Botões verdes/vermelhos no Financeiro
+// - Remover coluna ID do PDF e do CSV
+// - Mantém permissões (só quem abriu fecha; Admin pode tudo)
+// - KM saída/retorno, máscara BRL e tudo da 3.1.3
 
 import { LS, write } from './state.js';
 import { tools, teams, jobs } from './state.js';
 import { currentUser, bindAuth, showApp, showLogin } from './auth.js';
-import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice } from './ui.js';
+import { fillSelect, renderTools, renderTeams, renderJobs, renderPicker, renderEmployeesChoice, renderUsers } from './ui.js';
 
 const getUser = ()=> { try{return JSON.parse(localStorage.getItem(LS.user)||'null');}catch{return null;} };
 const isAdmin = ()=> (getUser()?.role === 'Admin');
@@ -44,11 +44,12 @@ function setupTabs(){
       });
       if(tab==='retorno') refreshReturnSelect(true);
       if(tab==='finance')  renderFinance();
+      if(tab==='cadastros' && isAdmin()) renderUsers(); // mostra usuários na aba cadastros
     });
   });
 }
 
-/* ---------- SAÍDA: KM de saída (garante campo) ---------- */
+/* ---------- SAÍDA: KM (garante campo) ---------- */
 function ensureOutKmField(){
   const sec = document.getElementById('tab-saida');
   if(!sec) return;
@@ -59,7 +60,7 @@ function ensureOutKmField(){
   if(row){ row.appendChild(wrap); } else { sec.appendChild(wrap); }
 }
 
-/* ---------- RETORNO: UI dinâmica do checklist ---------- */
+/* ---------- RETORNO: checklist ---------- */
 function ensureRetToolsBox(){
   const sec = document.getElementById('tab-retorno');
   if(!sec) return null;
@@ -91,7 +92,6 @@ function ensureRetToolsBox(){
   }
   return box;
 }
-
 function renderReturnChecklist(check){
   const box = ensureRetToolsBox(); if(!box) return;
   const tbody = document.getElementById('retToolsTbody'); if(!tbody) return;
@@ -115,8 +115,6 @@ function renderReturnChecklist(check){
     `;
   }).join('');
 }
-
-/* ---------- RETORNO: select de saídas abertas ---------- */
 function refreshReturnSelect(renderChecklist=false){
   const sel = document.getElementById('retOpen'); if(!sel) return;
   const list = openCheckouts();
@@ -143,34 +141,19 @@ function loadJobsSafe(){
     return Array.isArray(arr) ? arr : [];
   }catch{ return []; }
 }
-
-/* Máscara BRL em inputs text */
+/* máscara BRL */
 function maskBRLInput(el){
-  const unmask = s => {
-    const onlyDigits = (s||'').replace(/\D/g,'');
-    return Number(onlyDigits||0)/100;
-  };
+  const unmask = s => Number((s||'').replace(/\D/g,'')||0)/100;
   const format = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  el.type = 'text';
-  el.inputMode = 'numeric';
-  el.addEventListener('input', ()=>{
-    const raw = unmask(el.value);
-    el.dataset.raw = String(raw);
-    el.value = format(raw);
-  });
-  // formata o valor inicial (se houver)
-  const start = unmask(el.value);
-  el.dataset.raw = String(start);
-  el.value = format(start);
+  el.type = 'text'; el.inputMode = 'numeric';
+  el.addEventListener('input', ()=>{ const raw=unmask(el.value); el.dataset.raw=String(raw); el.value=format(raw); });
+  const start = unmask(el.value); el.dataset.raw=String(start); el.value = format(start);
 }
 const getRawBRL = (el)=> Number(el?.dataset?.raw||0);
 
 function renderFinance(){
   const sec = document.getElementById('tab-finance'); if(!sec) return;
-  if(!isAdmin()){
-    sec.innerHTML = `<p>Apenas Admin pode acessar o Financeiro.</p>`;
-    return;
-  }
+  if(!isAdmin()){ sec.innerHTML = `<p>Apenas Admin pode acessar o Financeiro.</p>`; return; }
 
   const data = loadFin();
   sec.innerHTML = `
@@ -182,7 +165,7 @@ function renderFinance(){
         <div><label>Obra/Cliente</label><select id="finOfJob"></select></div>
         <div><label>Valor contratado</label><input id="finOfVal" placeholder="R$ 0,00"></div>
       </div>
-      <div class="mt"><button id="finAddOf" class="btn">Adicionar OF</button></div>
+      <div class="mt"><button id="finAddOf" class="btn btn-green">Adicionar OF</button></div>
     </div>
 
     <div class="card">
@@ -206,11 +189,8 @@ function renderFinance(){
 
     <div class="card" id="finDetails" style="display:none"></div>
   `;
-
   fillSelect(document.getElementById('finOfJob'), (loadJobsSafe()));
-  // máscara BRL (contratado)
   maskBRLInput(document.getElementById('finOfVal'));
-
   const finList = document.getElementById('finList');
 
   function calc(of){
@@ -219,7 +199,6 @@ function renderFinance(){
     const saldo = contratado - gasto;
     return { contratado, gasto, saldo };
   }
-
   function renderList(){
     const ofs = data.ofs || [];
     finList.innerHTML = ofs.map((of,idx)=>{
@@ -232,14 +211,13 @@ function renderFinance(){
           <td>${fmt(k.gasto)}</td>
           <td>${fmt(k.saldo)}</td>
           <td>
-            <button class="btn xs" data-act="open">Abrir</button>
-            <button class="btn xs" data-act="del">Excluir</button>
+            <button class="btn xs btn-green" data-act="open">Abrir</button>
+            <button class="btn xs btn-red"   data-act="del">Excluir</button>
           </td>
         </tr>
       `;
     }).join('');
   }
-
   function renderDetails(i){
     const wrap = document.getElementById('finDetails');
     const of = (data.ofs||[])[i];
@@ -252,7 +230,7 @@ function renderFinance(){
       <div class="row threecol">
         <div><label>Descrição</label><input id="finExpDesc" placeholder="Ex.: Material, Mão-de-obra"></div>
         <div><label>Valor</label><input id="finExpVal" placeholder="R$ 0,00"></div>
-        <div style="align-self:end"><button id="finAddExp" class="btn">Adicionar lançamento</button></div>
+        <div style="align-self:end"><button id="finAddExp" class="btn btn-green">Adicionar lançamento</button></div>
       </div>
       <div class="tableWrap mt">
         <table class="tbl">
@@ -263,18 +241,15 @@ function renderFinance(){
                 <td>${new Date(e.date||Date.now()).toLocaleString('pt-BR')}</td>
                 <td>${e.desc||'-'}</td>
                 <td>${fmt(e.amount)}</td>
-                <td><button class="btn xs" data-act="del-exp">Excluir</button></td>
+                <td><button class="btn xs btn-red" data-act="del-exp">Excluir</button></td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
     `;
-
-    // máscara BRL no valor do lançamento
     maskBRLInput(document.getElementById('finExpVal'));
 
-    // add expense
     document.getElementById('finAddExp').onclick = ()=>{
       const desc = document.getElementById('finExpDesc').value.trim();
       const val  = getRawBRL(document.getElementById('finExpVal'));
@@ -285,16 +260,12 @@ function renderFinance(){
       renderDetails(i);
       renderList();
     };
-
-    // delete expense
     document.getElementById('finExpList').onclick = (ev)=>{
       const btn = ev.target.closest('[data-act="del-exp"]'); if(!btn) return;
       const tr = btn.closest('tr[data-ix]'); const ix = Number(tr?.dataset.ix||-1);
       if(ix>=0){ of.expenses.splice(ix,1); saveFin(data); renderDetails(i); renderList(); }
     };
   }
-
-  // add OF
   document.getElementById('finAddOf').onclick = ()=>{
     const num = document.getElementById('finOfNum').value.trim();
     const job = document.getElementById('finOfJob').value;
@@ -306,8 +277,6 @@ function renderFinance(){
     saveFin(dataNow);
     renderFinance();
   };
-
-  // list actions
   finList.onclick = (ev)=>{
     const btn = ev.target.closest('[data-act]'); if(!btn) return;
     const tr = btn.closest('tr[data-i]'); const i = Number(tr?.dataset.i||-1); if(i<0) return;
@@ -317,16 +286,15 @@ function renderFinance(){
     }
     if(btn.dataset.act==='open'){ renderDetails(i); return; }
   };
-
   renderList();
   renderDetails(-1);
 }
 
-/* -------- Exportações -------- */
+/* -------- Exportações (sem ID) -------- */
 function exportCSV(){
   const all = loadChecks();
   const rows = [
-    ['id','criado_por','data_saida','km_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
+    ['criado_por','data_saida','km_saida','obra','funcionarios','itens(qtd)','itens_status','status','data_retorno','km_retorno','obs'],
     ...all.map(ch=>{
       const itens = ch.items.map(it=>`${it.name}:${it.take}`).join(' | ');
       const iStat = ch.items.map(it=>{
@@ -335,7 +303,6 @@ function exportCSV(){
         return `${it.name}:${st}${ob}`;
       }).join(' | ');
       return [
-        ch.id,
         ch.createdBy || '',
         ch.timeOut,
         ch.kmOut ?? '',
@@ -362,13 +329,10 @@ function exportCSV(){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-
 function exportPDF(){
-  if(!isAdmin() && !getUser()){ alert('Permissão insuficiente.'); return; }
   const u = getUser();
   const checks = loadChecks();
   const fin = loadFin();
-
   const html = `
 <!DOCTYPE html><html><head>
 <meta charset="utf-8"><title>Relatório Diário</title>
@@ -391,7 +355,7 @@ function exportPDF(){
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>Criado por</th><th>Saída</th><th>KM Saída</th><th>Obra</th>
+        <th>Criado por</th><th>Saída</th><th>KM Saída</th><th>Obra</th>
         <th>Equipe</th><th>Itens (qtd)</th><th>Condição</th><th>Status</th><th>Retorno</th><th>KM Retorno</th>
       </tr>
     </thead>
@@ -405,7 +369,6 @@ function exportPDF(){
         }).join(' | ');
         return `
           <tr>
-            <td>${ch.id}</td>
             <td>${ch.createdBy||''}</td>
             <td>${ch.timeOut||''}</td>
             <td>${ch.kmOut??''}</td>
@@ -424,11 +387,7 @@ function exportPDF(){
 
   <h2>Financeiro</h2>
   <table>
-    <thead>
-      <tr>
-        <th>Nº OF</th><th>Obra</th><th>Contratado</th><th>Gasto</th><th>Saldo</th>
-      </tr>
-    </thead>
+    <thead><tr><th>Nº OF</th><th>Obra</th><th>Contratado</th><th>Gasto</th><th>Saldo</th></tr></thead>
     <tbody>
       ${(fin.ofs||[]).map(of=>{
         const gasto = (of.expenses||[]).reduce((a,e)=> a + (Number(e.amount)||0), 0);
@@ -440,8 +399,7 @@ function exportPDF(){
             <td>${fmt(of.value)}</td>
             <td>${fmt(gasto)}</td>
             <td>${fmt(saldo)}</td>
-          </tr>
-        `;
+          </tr>`;
       }).join('')}
     </tbody>
   </table>
@@ -458,18 +416,16 @@ function exportPDF(){
       </tbody>
     </table>
   `).join('')}
-
   <button onclick="window.print()">Imprimir / Salvar como PDF</button>
 </body></html>`.trim();
 
-  const win = window.open('', '_blank');
-  win.document.open(); win.document.write(html); win.document.close();
+  const win = window.open('', '_blank'); win.document.open(); win.document.write(html); win.document.close();
 }
 
 /* ---------- CSV handler ---------- */
 function exportCSVHandler(){ exportCSV(); }
 
-/* ---------- Cadastros: delegação estável ---------- */
+/* ---------- Cadastros: binds + usuários ---------- */
 function bindCadastrosActions(ctx){
   const sec = document.getElementById('tab-cadastros');
   if(!sec || sec.dataset.addBound) return;
@@ -530,40 +486,33 @@ function initAppUI(){
   renderTools(()=>ctx.renderPicker());
   renderTeams(()=>{});
   renderJobs(()=>{});
+  if(isAdmin()) renderUsers(); // mostra o card de usuários
   ctx.renderPicker();
 
   bindCadastrosActions(ctx);
 
   // Confirmar Saída
+  document.getElementById('btnCheckout')?.classList.add('btn-green');
   document.getElementById('btnCheckout')?.addEventListener('click', ()=>{
     const items = Object.entries(ctx.pickState)
       .filter(([_,v])=> (v?.take||0)>0)
       .map(([k,v])=>{
         const i = Number(k.split('_')[1]||0);
-        return {
-          idx:i,
-          name:(tools[i]?.name||''),
-          take:Number(v.take||0),
-          cond:'Retornou',
-          obsBack:''
-        };
+        return { idx:i, name:(tools[i]?.name||''), take:Number(v.take||0), cond:'Retornou', obsBack:'' };
       });
-
     if(items.length===0){ alert('Selecione ao menos uma ferramenta.'); return; }
-
     const job = document.getElementById('outJobsite')?.value || '';
     const time = document.getElementById('outTime')?.value || new Date().toISOString().slice(0,16);
     const kmOut = Number(document.getElementById('outKm')?.value || 0);
     const employees = [...ctx.employeesSelected];
     const u = getUser();
-
     const ch = { id:'ch_'+Date.now(), createdBy:(u?.name||''), timeOut:time, kmOut, job, employees, items, closed:false };
     const all = loadChecks(); all.push(ch); saveChecks(all);
     alert('Saída registrada!');
     refreshReturnSelect(true);
   });
 
-  // troca de saída selecionada
+  // Retorno: seleção muda checklist
   const retOpenSel = document.getElementById('retOpen');
   if(retOpenSel && !retOpenSel.dataset.bound){
     retOpenSel.dataset.bound='1';
@@ -575,21 +524,16 @@ function initAppUI(){
   }
 
   // Confirmar Retorno
-  document.getElementById('btnFinishReturn')?.addEventListener('click', ()=>{
-    const sel = document.getElementById('retOpen');
-    const id  = sel?.value; if(!id){ alert('Selecione a saída.'); return; }
-
-    // Regra de permissão
-    const all = loadChecks();
-    const idx = all.findIndex(x=>x.id===id);
+  const btnRet = document.getElementById('btnFinishReturn');
+  btnRet?.classList.add('btn-green');
+  btnRet?.addEventListener('click', ()=>{
+    const sel = document.getElementById('retOpen'); const id  = sel?.value; if(!id){ alert('Selecione a saída.'); return; }
+    const all = loadChecks(); const idx = all.findIndex(x=>x.id===id);
     if(idx<0) return alert('Saída não encontrada.');
     const u = getUser();
     if(!isAdmin() && (all[idx].createdBy||'').toLowerCase() !== (u?.name||'').toLowerCase()){
-      alert('Somente quem abriu a saída pode confirmar o retorno (Admin pode tudo).');
-      return;
+      alert('Somente quem abriu a saída pode confirmar o retorno (Admin pode tudo).'); return;
     }
-
-    // Atualiza checklist com o que está na tela (condição/obs)
     const tbody = document.getElementById('retToolsTbody');
     if(tbody){
       const rows = [...tbody.querySelectorAll('tr[data-i]')];
@@ -597,32 +541,24 @@ function initAppUI(){
         const i = Number(tr.dataset.i||-1); if(i<0) return;
         const cond = tr.querySelector('.rt-cond')?.value || 'Retornou';
         const obs  = tr.querySelector('.rt-obs')?.value || '';
-        if(all[idx].items && all[idx].items[i]){
-          all[idx].items[i].cond = cond;
-          all[idx].items[i].obsBack = obs;
-        }
+        if(all[idx].items && all[idx].items[i]){ all[idx].items[i].cond = cond; all[idx].items[i].obsBack = obs; }
       });
     }
-
     const km  = Number(document.getElementById('retKm')?.value||0);
     const tIn = document.getElementById('retTime')?.value || new Date().toISOString().slice(0,16);
     const obs = document.getElementById('retNotes')?.value || '';
-
-    all[idx].closed = true;
-    all[idx].kmIn   = km;
-    all[idx].timeIn = tIn;
-    all[idx].notes  = obs;
+    all[idx].closed = true; all[idx].kmIn = km; all[idx].timeIn = tIn; all[idx].notes = obs;
     saveChecks(all);
-
     alert('Retorno confirmado!');
     refreshReturnSelect(true);
   });
 
   // Exportações
+  document.getElementById('btnExportPDF')?.classList.add('btn-green');
   document.getElementById('btnExportPDF')?.addEventListener('click', exportPDF);
+  document.getElementById('btnExportXLS')?.classList.add('btn-green');
   document.getElementById('btnExportXLS')?.addEventListener('click', exportCSVHandler);
 
-  // Inicial
   refreshReturnSelect(true);
 }
 
