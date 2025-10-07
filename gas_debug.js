@@ -1,6 +1,7 @@
 // gas_debug.js
-import { sendToGAS, retryQueue } from './gas.js';
+import { CONFIG, sendToGAS, retryQueue } from './gas.js';
 import { LS, read } from './storage.js';
+
 
 function notify(msg, ok=true){
   alert((ok ? '✅ ' : '❌ ') + msg);
