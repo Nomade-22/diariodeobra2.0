@@ -1,12 +1,9 @@
-// gas_bind.js — envia a ÚLTIMA saída/retorno salvo localmente para o GAS
-// (discreto: só dispara após você clicar nos botões de confirmar)
-
+// gas_bind.js — liga os botões ao envio para a planilha
 import { sendToGAS, retryQueue } from './gas.js';
-import { LS, read as lsRead } from './storage.js';
+import { LS, read } from './storage.js';
 
-// lê arrays do localStorage pelas chaves usadas no projeto
-function readOuts(){ return lsRead(LS.outs, []); }   // mp_checkouts_v1
-function readRets(){ return lsRead(LS.rets, []); }   // mp_returns_v1
+const readOuts = ()=> read(LS.outs, []); // mp_checkouts_v1
+const readRets = ()=> read(LS.rets, []); // mp_returns_v1
 
 function bindOnce(id, fn){
   const el = document.getElementById(id);
@@ -37,7 +34,7 @@ function sendLastRet(){
 }
 
 window.addEventListener('DOMContentLoaded', ()=>{
-  retryQueue();
-  bindOnce('btnCheckout',     withDelay(600, sendLastOut));   // após Confirmar Saída
-  bindOnce('btnFinishReturn', withDelay(600, sendLastRet));   // após Confirmar Retorno
+  retryQueue(); // tenta enviar qualquer coisa pendente
+  bindOnce('btnCheckout',     withDelay(600, sendLastOut));   // Confirmar Saída
+  bindOnce('btnFinishReturn', withDelay(600, sendLastRet));   // Confirmar Retorno
 });
