@@ -24,8 +24,7 @@ function sendLastOut(){
 // Retorno: envia o último checkout FECHADO (closed=true)
 function sendLastRet(){
   const arr = readChecks(); if(!arr.length) return console.warn('[GAS] Sem retornos locais.');
-  const last = arr[arr.length-1];
-  if(!last.closed){ console.warn('[GAS] Último checkout ainda não fechado.'); return; }
+  const last = arr[arr.length-1]; if(!last.closed){ console.warn('[GAS] Último checkout não fechado'); return; }
   const ret = {
     out_id: last.id,
     kmIn: last.kmIn || 0,
