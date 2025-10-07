@@ -1,30 +1,25 @@
-// gas_bind.js
-// Faz o "bind" discreto: após você salvar localmente, mandamos o último
-// item de Saídas/Retornos para o Google Apps Script.
+// gas_bind.js — envia a ÚLTIMA saída/retorno salvo localmente para o GAS
+// (discreto: só dispara após você clicar nos botões de confirmar)
 
 import { sendToGAS, retryQueue } from './gas.js';
+import { LS, read as lsRead } from './storage.js';
 
-// chaves que você usa no localStorage (do seu projeto atual)
-const KEY_OUTS = 'mp_outs';
-const KEY_RETS = 'mp_rets';
-
-function read(key){
-  try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch{ return []; }
-}
+// lê arrays do localStorage pelas chaves usadas no projeto
+function readOuts(){ return lsRead(LS.outs, []); }   // mp_checkouts_v1
+function readRets(){ return lsRead(LS.rets, []); }   // mp_returns_v1
 
 function bindOnce(id, fn){
   const el = document.getElementById(id);
-  if(!el || el.dataset.gasBound) return;
-  el.dataset.gasBound = '1';
+  if(!el) return;
+  if(el.dataset._gasbind==='1') return;
+  el.dataset._gasbind = '1';
   el.addEventListener('click', fn);
 }
 
-// tenta enviar último registro algum tempo depois do clique (para dar
-// tempo do seu código salvar no localStorage primeiro)
-function withDelay(ms, f){ return ()=> setTimeout(f, ms); }
+const withDelay = (ms, fn)=> ()=> setTimeout(fn, ms);
 
 function sendLastOut(){
-  const arr = read(KEY_OUTS);
+  const arr = readOuts();
   if(!arr.length) return;
   const out = arr[arr.length - 1];
   sendToGAS('saida', out).then(r=>{
@@ -33,7 +28,7 @@ function sendLastOut(){
 }
 
 function sendLastRet(){
-  const arr = read(KEY_RETS);
+  const arr = readRets();
   if(!arr.length) return;
   const ret = arr[arr.length - 1];
   sendToGAS('retorno', ret).then(r=>{
@@ -41,9 +36,8 @@ function sendLastRet(){
   }).catch(e=>console.warn('Erro GAS retorno', e));
 }
 
-// liga os botões quando a página carrega
 window.addEventListener('DOMContentLoaded', ()=>{
-  retryQueue(); // tenta enviar o que estava na fila
-  bindOnce('btnCheckout',    withDelay(600, sendLastOut)); // após confirmar saída
-  bindOnce('btnFinishReturn',withDelay(600, sendLastRet)); // após confirmar retorno
+  retryQueue();
+  bindOnce('btnCheckout',     withDelay(600, sendLastOut));   // após Confirmar Saída
+  bindOnce('btnFinishReturn', withDelay(600, sendLastRet));   // após Confirmar Retorno
 });
