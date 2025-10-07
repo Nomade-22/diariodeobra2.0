@@ -1,6 +1,6 @@
 // gas.js — cliente do Apps Script (CORS-safe: x-www-form-urlencoded)
 export const CONFIG = {
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbztGARPKBSzr45WoWxV078OZ9Vj9CPSRmXQpMqOSEv0KR9DVtE_tf-TpsaqvaOUeqFz/exec'
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbzCyPtzsN9c66qUH1hNxW75UDu9jvTl7R154z6IsKVSPXlg8VVXBGpKc9VQw1K7b1Q3/exec'
 };
 
 const QKEY = 'syncQueue_v1';
