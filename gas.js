@@ -1,81 +1,52 @@
 // gas.js
 export const CONFIG = {
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbwVnR43pkbDsCAzr2RZZtfb3OAdQLV7IJIAd6G-6vBFUGTZyH93Spxl-eS8kDfyedXm/exec'
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbxOq3uL09Ttdkh6-QF9bcwb95yV3QA-juKywgekFLsEZbCxzV3ifqgaheIquObCz48Z/exec' // troque pela URL do Web App (/exec)
 };
 
-export async function sendToGAS(action, payload = {}) {
-  const body = { action, ...payload };
-  const res = await fetch(CONFIG.GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify(body)
+async function httpGet(url){
+  const r = await fetch(url); const j = await r.json();
+  if(!j.ok) throw new Error(j.error||'Erro'); return j.data;
+}
+async function httpPost(action, data){
+  const r = await fetch(CONFIG.GAS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action, ...data })
   });
-  const json = await res.json();
-  if(!json.ok) throw new Error(json.error || 'Falha no GAS');
-  return json.data;
+  const j = await r.json(); if(!j.ok) throw new Error(j.error||'Erro'); return j.data;
 }
 
-// ---- Cadastros ----
-export const salvarFerramenta = (row) =>
-  sendToGAS('upsert_tool', { obj: {
-    id: row.id || undefined,
-    nome: row.nome,
-    codigo: row.codigo || '',
-    qtd_total: Number(row.qtd||0),
-    obs: row.obs || '',
-    ativo: 'sim'
-  }});
+// ping (cria/ajusta as abas)
+export async function testarConexao(){ return httpGet(CONFIG.GAS_URL+'?action=ping'); }
 
-export const salvarFuncionario = (row) =>
-  sendToGAS('upsert_staff', { obj: {
-    id: row.id || undefined,
-    nome: row.nome,
-    cargo: row.cargo || '',
-    ativo: 'sim'
-  }});
+// catálogos (para preencher combos da tela)
+export async function buscarCatalogos(){ return httpGet(CONFIG.GAS_URL+'?action=list_catalogs'); }
 
-export const salvarObra = (row) =>
-  sendToGAS('upsert_work', { obj: {
-    id: row.id || undefined,
-    nome: row.nome,          // “Obra/Cliente” que você digitou
-    cliente: row.cliente || '',
-    cidade: row.cidade || '',
-    ativo: 'sim'
-  }});
-
-// ---- Carregar catálogos para os supervisores ----
-export async function buscarCatalogos() {
-  const res = await fetch(CONFIG.GAS_URL + '?action=list_catalogs');
-  const json = await res.json();
-  if(!json.ok) throw new Error(json.error || 'Erro list_catalogs');
-
-  const funcs = (json.data.Funcionarios||[]).map(r => ({ id:r[0], nome:r[1], cargo:r[2], ativo:r[3] }));
-  const ferrs = (json.data.Ferramentas||[]).map(r => ({ id:r[0], codigo:r[1], nome:r[2], qtd_total:r[3], obs:r[4], ativo:r[5] }));
-  const obras = (json.data.Obras||[]).map(r => ({ id:r[0], nome:r[1], cliente:r[2], cidade:r[3], ativo:r[4] }));
-  return { funcs, ferrs, obras };
+// cadastros
+export function salvarFuncionario({id,nome,cargo,ativo='sim'}) {
+  return httpPost('upsert_staff', { obj:{id,nome,cargo,ativo} });
+}
+export function salvarFerramenta({id,nome,codigo,qtd_total=0,obs='',ativo='sim'}) {
+  return httpPost('upsert_tool', { obj:{id,nome,codigo,qtd_total,obs,ativo} });
+}
+export function salvarObra({id,nome,cliente='',cidade='',ativo='sim'}) {
+  return httpPost('upsert_work', { obj:{id,nome,cliente,cidade,ativo} });
 }
 
-// ---- Saída ----
-export function confirmarSaida({obra, motorista, equipeArray, itensArray, kmOut, timeOut, obs, createdBy, of}) {
-  return sendToGAS('saida', {
-    data: {
-      job: obra, driver: motorista,
-      employees: equipeArray,     // array de nomes/ids
-      items: itensArray,          // [{name, code, qtd, cond, obs}]
-      kmOut, timeOut, obs,
-      createdBy, of
-    }
-  });
+// movimentação
+export function confirmarSaida({id,obra,createdBy='',motorista='',equipeArray=[],itensArray=[],kmOut='',timeOut='',obs=''}) {
+  const employees = equipeArray; // array de nomes/ids
+  const items     = itensArray;  // [{name, code, qtd, cond}]
+  return httpPost('saida', { data:{ id, job:obra, createdBy, driver:motorista, employees, items, kmOut, timeOut, obs } });
+}
+export function confirmarRetorno({out_id,kmIn,timeIn,items=[],notes=''}) {
+  return httpPost('retorno', { data:{ out_id, kmIn, timeIn, items, notes } });
 }
 
-// ---- Retorno ----
-export function confirmarRetorno({out_id, kmIn, timeIn, items, notes}) {
-  return sendToGAS('retorno', {
-    data: { out_id, kmIn, timeIn, items, notes }
-  });
+// financeiro
+export function salvarFinanceiroResumo({of_id,obra,contratado,gasto,saldo}) {
+  return httpPost('append_lanc', { data:{ of_id, obra, contratado, gasto, saldo } });
 }
-
-// ---- Financeiro ----
-export function salvarLancamento(lanc) { // campos devem bater com TABS.Lancamentos
-  return sendToGAS('append_lanc', { data: lanc });
+export function salvarFinanceiroItem({of_id,data,descricao,valor}) {
+  return httpPost('append_lanc', { data:{ of_id, data, descricao, valor } });
 }
